@@ -35,6 +35,7 @@ export const useStore = create((set, get) => ({
         aqiData: aqi,
         cityName: get().cityName || city, // Prefer manually set name if available
         lastRefresh: new Date(),
+        selectedTimeIndex: 0,
         loading: false,
       });
     } catch (err) {

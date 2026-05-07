@@ -22,7 +22,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Wind, Droplets, Eye, Sparkles } from 'lucide-react';
 
 import { useGeolocation }  from './hooks/useGeolocation';
 import { useWeather }      from './hooks/useWeather';
@@ -39,11 +39,8 @@ import WeatherAlerts   from './components/WeatherAlerts';
 import LoadingSkeleton from './components/LoadingSkeleton';
 import SavedCities     from './components/SavedCities';
 
-// New map components
-import WeatherMap from './components/Map/WeatherMap';
-import MapLayers from './components/Map/MapLayers';
-import TimelineSlider from './components/TimelineSlider';
-import InsightsPanel from './components/InsightsPanel';
+import WeatherPulse from './components/WeatherPulse';
+import { getAqiInfo, describeWind } from './utils/formatters';
 
 // ─── Dark/Light theme based on time of day ───────────────────────────────────
 function useTimeTheme() {
@@ -85,6 +82,22 @@ export default function App() {
   const isDay       = data?.weather?.current?.is_day === 1 || getIsDay();
   const weatherCode = data?.weather?.current?.weather_code ?? 0;
   const animation   = getWeatherInfo(weatherCode).animation;
+  const current = data?.weather?.current;
+  const aqiValue = data?.aqi?.european_aqi ?? data?.aqi?.us_aqi ?? null;
+  const aqiInfo = getAqiInfo(aqiValue);
+  const windSpeed = current?.wind_speed_10m ?? 0;
+  const windLabel = describeWind(windSpeed);
+  const humidity = current?.relative_humidity_2m ?? null;
+  const visibility = current?.visibility ?? null;
+  const heroMotion = {
+    sunny: { y: [0, -4, 0], rotate: [0, 0.5, 0], transition: { duration: 6, repeat: Infinity, ease: 'easeInOut' } },
+    cloudy: { x: [0, 4, 0], transition: { duration: 8, repeat: Infinity, ease: 'easeInOut' } },
+    rain: { y: [0, 2, 0], transition: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' } },
+    snow: { y: [0, -2, 0], transition: { duration: 4.5, repeat: Infinity, ease: 'easeInOut' } },
+    thunder: { scale: [1, 1.01, 1], transition: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' } },
+    fog: { opacity: [0.82, 1, 0.82], transition: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } },
+  };
+  const heroVariant = heroMotion[animation] ?? heroMotion.cloudy;
 
   // Handle city selection from SearchBar
   const handleCitySelect = (city) => {
@@ -112,11 +125,11 @@ export default function App() {
 
       {/* Main scrollable content */}
       <main className="relative z-10 min-h-screen">
-        <div className="max-w-[1400px] mx-auto px-4 lg:px-8 pt-6 lg:pt-12 pb-16">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start">
+        <div className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-5 lg:pt-10 pb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 lg:gap-8 items-start">
             
             {/* ── LEFT COLUMN ── */}
-            <div className="col-span-1 md:col-span-4 lg:col-span-3 flex flex-col gap-6 md:sticky md:top-6 z-50">
+            <div className="flex flex-col gap-6 lg:sticky lg:top-6 z-50">
               <SearchBar
                 onSelectCity={handleCitySelect}
                 onGpsClick={handleGpsClick}
@@ -126,22 +139,15 @@ export default function App() {
                 currentCity={displayCity} 
                 onCitySelect={handleCitySelect} 
               />
-              
-              {/* Only show map layers if data is loaded */}
-              {data && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <MapLayers />
-                </motion.div>
-              )}
             </div>
 
             {/* ── CONTENT AREA ── */}
             {isLoading ? (
-              <div className="col-span-1 md:col-span-8 lg:col-span-9">
+              <div className="min-w-0">
                 <LoadingSkeleton />
               </div>
             ) : error ? (
-              <div className="col-span-1 md:col-span-8 lg:col-span-9">
+              <div className="min-w-0">
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -159,64 +165,90 @@ export default function App() {
                 </motion.div>
               </div>
             ) : data ? (
-              <>
-                {/* ── LEFT COLUMN CONTINUATION ── */}
-                <div className="col-span-1 md:col-span-4 lg:hidden hidden">
-                   {/* Mobile can stack, but desktop has it fixed on left */}
-                </div>
-
-                {/* ── CENTER COLUMN (MAP & TIMELINE) ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="min-w-0 flex flex-col gap-6"
+              >
+                {/* ── HERO STRIP ── */}
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4 }}
-                  className="col-span-1 md:col-span-8 lg:col-span-5 flex flex-col gap-6"
+                  animate={heroVariant}
+                  className="glass rounded-3xl border border-white/10 px-5 py-4 overflow-hidden relative"
                 >
-                  <WeatherMap />
-                  <TimelineSlider />
-                </motion.div>
-
-                {/* ── RIGHT COLUMN (DATA PANELS) ── */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                  className="col-span-1 md:col-span-12 lg:col-span-4 flex flex-col gap-6 max-h-[85vh] overflow-y-auto no-scrollbar pb-10 pr-2"
-                >
-                  <WeatherAlerts
-                    current={data.weather.current}
-                    aqi={data.aqi}
-                  />
-
-                  <InsightsPanel />
-
-                  <CurrentWeather
-                    current={data.weather.current}
-                    daily={data.weather.daily}
-                    cityName={displayCity}
-                    isDay={isDay}
-                  />
-
-                  <HourlyForecast hourly={data.weather.hourly} />
-                  <DailyForecast daily={data.weather.daily} />
-                  
-                  <WeatherDetails
-                    current={data.weather.current}
-                    daily={data.weather.daily}
-                    aqi={data.aqi}
-                  />
-
-                  {/* Footer: last refresh timestamp */}
-                  <div className="flex items-center justify-center gap-2 py-4 text-white/35 text-xs">
-                    <RefreshCw size={11} />
-                    <span>
-                      {lastRefresh
-                        ? `Updated ${lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                        : 'Refreshing…'}
-                    </span>
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-fuchsia-400" />
+                  <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-white/45 text-xs uppercase tracking-[0.28em]">Live conditions</p>
+                      <h2 className="text-white text-2xl font-semibold">{displayCity}</h2>
+                      <p className="text-white/70 text-sm">{isDay ? 'Daytime forecast' : 'Night conditions'}</p>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto">
+                      <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-w-[120px]">
+                        <div className="flex items-center gap-2 text-white/55 text-xs uppercase tracking-[0.2em]"><Wind size={12} /> Wind</div>
+                        <div className="text-white font-semibold mt-1">{windSpeed.toFixed?.(1) ?? windSpeed} km/h</div>
+                        <div className="text-white/55 text-xs">{windLabel}</div>
+                      </div>
+                      <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-w-[120px]">
+                        <div className="flex items-center gap-2 text-white/55 text-xs uppercase tracking-[0.2em]"><Droplets size={12} /> Humidity</div>
+                        <div className="text-white font-semibold mt-1">{humidity != null ? `${Math.round(humidity)}%` : '—'}</div>
+                        <div className="text-white/55 text-xs">Comfort level</div>
+                      </div>
+                      <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-w-[120px]">
+                        <div className="flex items-center gap-2 text-white/55 text-xs uppercase tracking-[0.2em]"><Eye size={12} /> Visibility</div>
+                        <div className="text-white font-semibold mt-1">{visibility != null ? `${Math.round(visibility / 1000)} km` : '—'}</div>
+                        <div className="text-white/55 text-xs">Clear view</div>
+                      </div>
+                      <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-w-[120px]">
+                        <div className="flex items-center gap-2 text-white/55 text-xs uppercase tracking-[0.2em]"><Sparkles size={12} /> AQI</div>
+                        <div className="text-white font-semibold mt-1">{aqiValue ?? '—'}</div>
+                        <div className={`text-xs ${aqiInfo.color}`}>{aqiInfo.label}</div>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
-              </>
+
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] gap-6 items-start">
+                  {/* ── MAIN COLUMN ── */}
+                  <motion.div className="flex flex-col gap-6 min-w-0">
+                    <CurrentWeather
+                      current={data.weather.current}
+                      daily={data.weather.daily}
+                      cityName={displayCity}
+                      isDay={isDay}
+                    />
+                    <WeatherPulse
+                      current={data.weather.current}
+                      hourly={data.weather.hourly}
+                      animation={animation}
+                    />
+                    <HourlyForecast hourly={data.weather.hourly} />
+                  </motion.div>
+
+                  {/* ── SIDE COLUMN ── */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto no-scrollbar pb-10 pr-2"
+                  >
+                    <WeatherAlerts current={data.weather.current} aqi={data.aqi} />
+
+                    <DailyForecast daily={data.weather.daily} />
+                    <WeatherDetails current={data.weather.current} daily={data.weather.daily} aqi={data.aqi} />
+
+                    {/* Footer: last refresh timestamp */}
+                    <div className="flex items-center justify-center gap-2 py-4 text-white/35 text-xs">
+                      <RefreshCw size={11} />
+                      <span>
+                        {lastRefresh
+                          ? `Updated ${lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          : 'Refreshing…'}
+                      </span>
+                    </div>
+                  </motion.div>
+                </div>
+              </motion.div>
             ) : null}
 
           </div>

@@ -43,14 +43,30 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
     default: {},
   };
   const animVariant = iconVariants[info.animation] ?? iconVariants.default;
+  const cardVariants = {
+    sunny: { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 18px 60px rgba(250, 204, 21, 0.12)' },
+    cloudy: { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 18px 60px rgba(148, 163, 184, 0.10)' },
+    rain: { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 18px 60px rgba(56, 189, 248, 0.16)' },
+    snow: { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 18px 60px rgba(191, 219, 254, 0.14)' },
+    thunder: { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 18px 60px rgba(129, 140, 248, 0.18)' },
+    fog: { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 18px 60px rgba(203, 213, 225, 0.10)' },
+  };
+  const cardStyle = cardVariants[info.animation] ?? cardVariants.cloudy;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="glass rounded-3xl px-8 py-10 text-center text-white space-y-2"
+      className="glass rounded-3xl px-8 py-10 text-center text-white space-y-2 relative overflow-hidden border border-white/10"
+      style={cardStyle}
     >
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-white/0 via-white/45 to-white/0 opacity-70" />
+      <motion.div
+        animate={animVariant}
+        className="absolute -top-8 right-[-24px] w-32 h-32 rounded-full bg-white/8 blur-2xl"
+      />
+
       {/* City name */}
       <motion.p
         initial={{ opacity: 0 }}
@@ -72,7 +88,7 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
         className="flex justify-center my-4"
       >
         <IconComp
-          size={80}
+          size={90}
           strokeWidth={1.2}
           className="text-white drop-shadow-lg"
         />
@@ -92,6 +108,12 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
       <p className="text-lg font-light text-white/90 mt-1">
         {info.label}
       </p>
+
+      <div className="flex items-center justify-center gap-2 pt-2 text-xs text-white/55 uppercase tracking-[0.24em]">
+        <span className="h-px w-6 bg-white/20" />
+        <span>Feels like {feelsLike}°</span>
+        <span className="h-px w-6 bg-white/20" />
+      </div>
 
       {/* High / Low / Feels Like */}
       <div className="flex items-center justify-center gap-4 mt-3 text-sm text-white/60">

@@ -2,22 +2,6 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Mapbox setup
-
-The weather map now reads its Mapbox token from a Vite env var.
-
-```bash
-cp .env.example .env
-```
-
-Then set:
-
-```bash
-VITE_MAPBOX_TOKEN=your_public_mapbox_token_here
-```
-
-Restart `npm run dev` after adding the token. Without it, the app shows a fallback state instead of trying to initialize Mapbox.
-
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)

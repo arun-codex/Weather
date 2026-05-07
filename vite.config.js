@@ -9,7 +9,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        mapboxDemo: resolve(__dirname, 'mapbox-demo.html'),
       },
     },
   },
