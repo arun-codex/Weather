@@ -1,0 +1,161 @@
+/**
+ * SearchBar.jsx
+ * ---------------
+ * Provides two ways to set location:
+ *  1. GPS button (📍) — re-triggers geolocation
+ *  2. City search — calls Open-Meteo geocoding, shows dropdown
+ *
+ * Props:
+ *  - onSelectCity(city): called with geocoding result object { lat, lon, name, admin1, country }
+ *  - onGpsClick(): called to refresh GPS location
+ *  - currentCity: string shown in input when not focused
+ */
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, MapPin, X, Loader2 } from 'lucide-react';
+import { searchCity } from '../api/weather';
+
+export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
+  const [query, setQuery]         = useState('');
+  const [results, setResults]     = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [focused, setFocused]     = useState(false);
+  const debounceTimer = useRef(null);
+  const inputRef      = useRef(null);
+
+  // Debounced search — waits 350ms after user stops typing
+  const handleChange = useCallback((e) => {
+    const value = e.target.value;
+    setQuery(value);
+
+    clearTimeout(debounceTimer.current);
+    if (value.length < 2) { setResults([]); return; }
+
+    debounceTimer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const cities = await searchCity(value);
+        setResults(cities);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+  }, []);
+
+  const handleSelect = (city) => {
+    setQuery('');
+    setResults([]);
+    setFocused(false);
+    inputRef.current?.blur();
+    onSelectCity(city);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    setResults([]);
+    inputRef.current?.focus();
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (!inputRef.current?.closest('.search-wrapper')?.contains(e.target)) {
+        setFocused(false);
+        setResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="search-wrapper relative w-full max-w-sm mx-auto">
+      {/* Input row */}
+      <div className="flex gap-2 items-center">
+        <div className="relative flex-1">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none"
+            size={16}
+          />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={handleChange}
+            onFocus={() => setFocused(true)}
+            placeholder={currentCity || 'Search city…'}
+            className="
+              w-full pl-9 pr-9 py-2.5 rounded-2xl text-sm text-white
+              glass placeholder-white/40 outline-none
+              focus:ring-2 focus:ring-white/30 transition-all
+            "
+          />
+          {/* Clear / loading indicator */}
+          {query.length > 0 && (
+            <button
+              onClick={handleClear}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+            >
+              {searching
+                ? <Loader2 size={14} className="animate-spin" />
+                : <X size={14} />
+              }
+            </button>
+          )}
+        </div>
+
+        {/* GPS button */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={onGpsClick}
+          title="Use my location"
+          className="
+            p-2.5 rounded-2xl glass text-white/70 hover:text-white
+            hover:bg-white/15 transition-all
+          "
+        >
+          <MapPin size={18} />
+        </motion.button>
+      </div>
+
+      {/* Dropdown results */}
+      <AnimatePresence>
+        {focused && results.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y:  4, scale: 1 }}
+            exit={{    opacity: 0, y: -8, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="
+              absolute top-full left-0 right-0 z-50
+              glass rounded-2xl overflow-hidden shadow-2xl
+            "
+          >
+            {results.map((city, i) => (
+              <button
+                key={`${city.id ?? i}`}
+                onMouseDown={() => handleSelect(city)}
+                className="
+                  w-full text-left px-4 py-3 flex items-center gap-3
+                  text-white hover:bg-white/10 transition-colors
+                  border-b border-white/5 last:border-0
+                "
+              >
+                <MapPin size={14} className="text-white/40 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">{city.name}</p>
+                  <p className="text-xs text-white/50">
+                    {[city.admin1, city.country].filter(Boolean).join(', ')}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

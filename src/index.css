@@ -1,0 +1,312 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   GLOBAL TOKENS & RESETS
+============================================================ */
+:root {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --rain-color: rgba(147, 197, 253, 0.6);
+  --lightning-color: rgba(255, 255, 255, 0.95);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+/* ============================================================
+   SCROLLBAR STYLING
+============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 999px;
+}
+
+/* ============================================================
+   RAIN ANIMATION
+   - Multiple pseudo-element layers of falling drops
+============================================================ */
+@keyframes rainDrop {
+  0% { transform: translateY(-100%) scaleY(0.8); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.7; }
+  100% { transform: translateY(100vh) scaleY(1.2); opacity: 0; }
+}
+
+.rain-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.rain-drop {
+  position: absolute;
+  top: -20px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, transparent, var(--rain-color));
+  animation: rainDrop linear infinite;
+  will-change: transform, opacity;
+}
+
+/* ============================================================
+   THUNDER / LIGHTNING ANIMATION
+============================================================ */
+@keyframes lightning {
+  0%, 89%, 93%, 97%, 100% { opacity: 0; }
+  90%, 94%, 98% { opacity: 1; }
+}
+
+.lightning-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: var(--lightning-color);
+  animation: lightning 4s ease-in-out infinite;
+  will-change: opacity;
+}
+
+/* ============================================================
+   SUN GLOW ANIMATION
+============================================================ */
+@keyframes sunGlow {
+  0%, 100% {
+    box-shadow: 0 0 80px 40px rgba(251, 191, 36, 0.25),
+                0 0 200px 100px rgba(251, 191, 36, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 120px 60px rgba(251, 191, 36, 0.4),
+                0 0 300px 150px rgba(251, 191, 36, 0.2);
+  }
+}
+
+@keyframes sunPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+.sun-orb {
+  animation: sunGlow 4s ease-in-out infinite, sunPulse 4s ease-in-out infinite;
+  will-change: box-shadow, transform;
+}
+
+/* ============================================================
+   CLOUD ANIMATION
+============================================================ */
+@keyframes cloudFloat1 {
+  0%, 100% { transform: translateX(0px) translateY(0px); }
+  50% { transform: translateX(20px) translateY(-8px); }
+}
+@keyframes cloudFloat2 {
+  0%, 100% { transform: translateX(0px) translateY(0px); }
+  50% { transform: translateX(-16px) translateY(6px); }
+}
+@keyframes cloudFloat3 {
+  0%, 100% { transform: translateX(0px) translateY(0px); }
+  33% { transform: translateX(10px) translateY(-4px); }
+  66% { transform: translateX(-12px) translateY(8px); }
+}
+
+.cloud-1 { animation: cloudFloat1 8s ease-in-out infinite; will-change: transform; }
+.cloud-2 { animation: cloudFloat2 12s ease-in-out infinite; will-change: transform; }
+.cloud-3 { animation: cloudFloat3 10s ease-in-out infinite; will-change: transform; }
+
+/* ============================================================
+   SNOW ANIMATION
+============================================================ */
+@keyframes snowFall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.7; }
+  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
+.snow-flake {
+  position: absolute;
+  top: -20px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  animation: snowFall linear infinite;
+  will-change: transform, opacity;
+}
+
+/* ============================================================
+   SHIMMER SKELETON ANIMATION
+============================================================ */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.06) 25%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,255,255,0.06) 75%
+  );
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* ============================================================
+   GLASS MORPHISM UTILITIES
+============================================================ */
+.glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================================
+   GRADIENT BACKGROUNDS PER WEATHER CONDITION
+============================================================ */
+
+/* Sunny / Clear */
+.bg-sunny-day {
+  background: linear-gradient(160deg,
+    #87CEEB 0%,
+    #60A5FA 30%,
+    #3B82F6 65%,
+    #1D4ED8 100%
+  );
+}
+.bg-sunny-night {
+  background: linear-gradient(160deg,
+    #0a1628 0%,
+    #0f2448 30%,
+    #1e3a5f 60%,
+    #0a1628 100%
+  );
+}
+
+/* Cloudy */
+.bg-cloudy-day {
+  background: linear-gradient(160deg,
+    #94A3B8 0%,
+    #64748B 40%,
+    #475569 100%
+  );
+}
+.bg-cloudy-night {
+  background: linear-gradient(160deg,
+    #1e293b 0%,
+    #0f172a 50%,
+    #020617 100%
+  );
+}
+
+/* Rain */
+.bg-rain-day {
+  background: linear-gradient(160deg,
+    #1e3a5f 0%,
+    #1a2f4e 40%,
+    #0f1e33 100%
+  );
+}
+.bg-rain-night {
+  background: linear-gradient(160deg,
+    #0a1628 0%,
+    #060f1e 50%,
+    #020810 100%
+  );
+}
+
+/* Thunderstorm */
+.bg-thunder-day {
+  background: linear-gradient(160deg,
+    #1f1f3a 0%,
+    #0f0f28 40%,
+    #050510 100%
+  );
+}
+.bg-thunder-night {
+  background: linear-gradient(160deg,
+    #0a0a1e 0%,
+    #050514 50%,
+    #020208 100%
+  );
+}
+
+/* Snow */
+.bg-snow-day {
+  background: linear-gradient(160deg,
+    #E2E8F0 0%,
+    #CBD5E1 40%,
+    #94A3B8 100%
+  );
+}
+.bg-snow-night {
+  background: linear-gradient(160deg,
+    #1e293b 0%,
+    #0f172a 50%,
+    #020617 100%
+  );
+}
+
+/* Fog / Mist */
+.bg-fog-day {
+  background: linear-gradient(160deg,
+    #D1D5DB 0%,
+    #9CA3AF 40%,
+    #6B7280 100%
+  );
+}
+.bg-fog-night {
+  background: linear-gradient(160deg,
+    #1F2937 0%,
+    #111827 50%,
+    #030712 100%
+  );
+}
+
+/* ============================================================
+   TRANSITION UTILITIES
+============================================================ */
+.bg-transition {
+  transition: background 1.5s ease-in-out;
+}
+
+/* ============================================================
+   HOURLY SCROLL - HIDE SCROLLBAR BUT ALLOW SCROLL
+============================================================ */
+.scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+.scroll-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
