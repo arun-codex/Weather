@@ -25,11 +25,31 @@ function toSelectableCity(city) {
   };
 }
 
+function isSameCity(a, b) {
+  if (!a || !b) return false;
+
+  const sameName = a.name.trim().toLowerCase() === b.name.trim().toLowerCase();
+  const sameCoords =
+    Math.abs(Number(a.latitude) - Number(b.latitude)) < 0.01 &&
+    Math.abs(Number(a.longitude) - Number(b.longitude)) < 0.01;
+
+  return sameName || sameCoords;
+}
+
+function uniqueCities(cities) {
+  return cities.reduce((unique, city) => {
+    if (!unique.some((saved) => isSameCity(saved, city))) {
+      unique.push(city);
+    }
+    return unique;
+  }, []);
+}
+
 export default function SavedCities({ currentCity, currentCoords, onCitySelect }) {
   const [savedCities, setSavedCities] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      return Array.isArray(saved) && saved.length > 0 ? saved : DEFAULT_SAVED_CITIES;
+      return Array.isArray(saved) && saved.length > 0 ? uniqueCities(saved) : DEFAULT_SAVED_CITIES;
     } catch {
       return DEFAULT_SAVED_CITIES;
     }
@@ -53,12 +73,12 @@ export default function SavedCities({ currentCity, currentCoords, onCitySelect }
   }, [currentCity, currentCoords]);
 
   const currentIsSaved = currentCityEntry
-    ? savedCities.some((city) => city.id === currentCityEntry.id)
+    ? savedCities.some((city) => isSameCity(city, currentCityEntry))
     : false;
 
   const addCurrentCity = () => {
     if (!currentCityEntry || currentIsSaved) return;
-    setSavedCities((cities) => [currentCityEntry, ...cities].slice(0, 8));
+    setSavedCities((cities) => uniqueCities([currentCityEntry, ...cities]).slice(0, 8));
   };
 
   const removeCity = (cityId) => {

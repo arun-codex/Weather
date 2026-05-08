@@ -31,7 +31,7 @@ export function useGeolocation() {
       },
       (err) => {
         // User denied GPS or another error — fall back to default location
-        console.warn('Geolocation error:', err.message);
+        console.info('Geolocation fallback:', err.message);
         setError(err.message);
         // Default to New Delhi, India as fallback
         setCoords({ lat: 28.6139, lon: 77.2090 });
