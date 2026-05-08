@@ -31,6 +31,7 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
   const feelsLike  = roundTemp(current.apparent_temperature);
   const highTemp   = daily?.temperature_2m_max?.[0] != null ? roundTemp(daily.temperature_2m_max[0]) : '—';
   const lowTemp    = daily?.temperature_2m_min?.[0] != null ? roundTemp(daily.temperature_2m_min[0]) : '—';
+  const periodLabel = isDay ? 'Day' : 'Night';
 
   // Icon animation variants
   const iconVariants = {
@@ -79,7 +80,7 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
 
       {/* Time */}
       <p className="text-xs text-white/50 tracking-widest uppercase">
-        {formatCurrentTime()}
+        {periodLabel} · {formatCurrentTime()}
       </p>
 
       {/* Animated weather icon */}

@@ -137,6 +137,7 @@ export default function App() {
               />
               <SavedCities 
                 currentCity={displayCity} 
+                currentCoords={activeCoords}
                 onCitySelect={handleCitySelect} 
               />
             </div>

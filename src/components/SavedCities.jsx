@@ -1,13 +1,69 @@
-import { MapPin, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function SavedCities({ currentCity, onCitySelect }) {
-  // Mock saved cities. In a real app, this would be read from localStorage.
-  const savedCities = [
-    { name: 'Tokyo, Japan', lat: 35.6895, lon: 139.6917, temp: 22, code: 'sunny' },
-    { name: 'London, UK', lat: 51.5085, lon: -0.1257, temp: 15, code: 'cloudy' },
-    { name: 'New York, USA', lat: 40.7128, lon: -74.0060, temp: 18, code: 'rain' },
-  ];
+const STORAGE_KEY = 'weather.savedCities';
+
+const DEFAULT_SAVED_CITIES = [
+  { id: 'tokyo-jp', name: 'Tokyo, Japan', latitude: 35.6895, longitude: 139.6917 },
+  { id: 'london-uk', name: 'London, UK', latitude: 51.5085, longitude: -0.1257 },
+  { id: 'new-york-us', name: 'New York, USA', latitude: 40.7128, longitude: -74.006 },
+];
+
+function makeCityId(name, coords) {
+  const lat = Number(coords?.lat ?? coords?.latitude ?? 0).toFixed(3);
+  const lon = Number(coords?.lon ?? coords?.longitude ?? 0).toFixed(3);
+  return `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${lat}-${lon}`;
+}
+
+function toSelectableCity(city) {
+  return {
+    name: city.name,
+    latitude: city.latitude,
+    longitude: city.longitude,
+    country_code: city.country_code,
+  };
+}
+
+export default function SavedCities({ currentCity, currentCoords, onCitySelect }) {
+  const [savedCities, setSavedCities] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      return Array.isArray(saved) && saved.length > 0 ? saved : DEFAULT_SAVED_CITIES;
+    } catch {
+      return DEFAULT_SAVED_CITIES;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedCities));
+  }, [savedCities]);
+
+  const currentCityEntry = useMemo(() => {
+    if (!currentCity || !currentCoords) return null;
+    const name = currentCity.replace('Loading location…', '').trim();
+    if (!name) return null;
+
+    return {
+      id: makeCityId(name, currentCoords),
+      name,
+      latitude: currentCoords.lat,
+      longitude: currentCoords.lon,
+    };
+  }, [currentCity, currentCoords]);
+
+  const currentIsSaved = currentCityEntry
+    ? savedCities.some((city) => city.id === currentCityEntry.id)
+    : false;
+
+  const addCurrentCity = () => {
+    if (!currentCityEntry || currentIsSaved) return;
+    setSavedCities((cities) => [currentCityEntry, ...cities].slice(0, 8));
+  };
+
+  const removeCity = (cityId) => {
+    setSavedCities((cities) => cities.filter((city) => city.id !== cityId));
+  };
 
   return (
     <div className="w-full glass rounded-3xl p-6 hidden md:block animate-in slide-in-from-left-8 duration-700">
@@ -15,20 +71,26 @@ export default function SavedCities({ currentCity, onCitySelect }) {
         <h2 className="opacity-80 text-sm font-medium uppercase tracking-wider">
           Saved Cities
         </h2>
-        <button className="p-1 hovered:bg-white/10 rounded-full transition-colors opacity-80 hover:opacity-100">
+        <button
+          type="button"
+          onClick={addCurrentCity}
+          disabled={!currentCityEntry || currentIsSaved}
+          title={currentIsSaved ? 'Current city is saved' : 'Save current city'}
+          className="p-1 rounded-full transition-colors opacity-80 hover:opacity-100 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+        >
           <Plus size={16} />
         </button>
       </div>
 
       <div className="space-y-3">
-        {/* Current Location Badge */}
-        <motion.button 
+        <motion.button
+          type="button"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="w-full text-left p-4 rounded-2xl bg-white/15 border border-white/20 shadow-sm flex items-center justify-between group"
         >
-          <div className="flex items-center gap-3">
-            <MapPin size={18} className="text-blue-200" />
+          <div className="flex items-center gap-3 min-w-0">
+            <MapPin size={18} className="text-blue-200 flex-shrink-0" />
             <span className="font-semibold text-white drop-shadow-sm truncate max-w-[150px]">
               {currentCity || 'Current Location'}
             </span>
@@ -38,20 +100,29 @@ export default function SavedCities({ currentCity, onCitySelect }) {
           </span>
         </motion.button>
 
-        {/* Saved List */}
         {savedCities.map((city) => (
-          <motion.button
-            key={city.name}
-            onClick={() => onCitySelect({ latitude: city.lat, longitude: city.lon, name: city.name.split(',')[0], country_code: city.name.split(',')[1] })}
+          <motion.div
+            key={city.id}
             whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full text-left p-4 rounded-2xl glass-light hover:bg-white/10 transition-colors flex items-center justify-between"
+            className="rounded-2xl glass-light hover:bg-white/10 transition-colors flex items-center"
           >
-            <span className="font-medium text-white/90 truncate max-w-[130px]">{city.name}</span>
-            <div className="flex items-center gap-2 text-white font-semibold">
-              <span className="text-xl">{city.temp}°</span>
-            </div>
-          </motion.button>
+            <button
+              type="button"
+              onClick={() => onCitySelect(toSelectableCity(city))}
+              className="min-w-0 flex-1 text-left p-4"
+            >
+              <span className="block font-medium text-white/90 truncate">{city.name}</span>
+              <span className="block text-xs text-white/45 mt-1">Tap to view forecast</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => removeCity(city.id)}
+              title={`Remove ${city.name}`}
+              className="mr-3 p-2 rounded-full text-white/45 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <Trash2 size={15} />
+            </button>
+          </motion.div>
         ))}
       </div>
     </div>
