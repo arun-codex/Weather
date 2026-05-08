@@ -13,7 +13,7 @@
  */
 
 import {
-  Droplets, Wind, Sun, Gauge, Activity,
+  Droplets, Wind, Sun, Gauge, Activity, Eye,
   CloudRain, Sunrise, Sunset
 } from 'lucide-react';
 import { describeWind, degToCompass, getAqiInfo, getUvInfo } from '../utils/formatters';
@@ -50,6 +50,7 @@ export default function WeatherDetails({ current, daily, aqi }) {
 
   const sunrise   = daily?.sunrise?.[0];
   const sunset    = daily?.sunset?.[0];
+  const visibility = current?.visibility ?? null; // meters, may be undefined
 
   return (
     <div>
@@ -106,6 +107,19 @@ export default function WeatherDetails({ current, daily, aqi }) {
           label="Precipitation"
           value={`${current.precipitation ?? 0} mm`}
           sub="Past hour"
+        />
+
+        {/* Visibility */}
+        <Tile
+          icon={Eye}
+          label="Visibility"
+          value={visibility != null ? `${Math.round(visibility / 1000)} km` : '—'}
+          sub={
+            visibility == null ? null : (
+              visibility >= 10000 ? 'Clear view' :
+              visibility >= 5000 ? 'Moderate' : 'Low visibility'
+            )
+          }
         />
 
         {/* Sunrise */}
