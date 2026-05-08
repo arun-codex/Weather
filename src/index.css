@@ -94,12 +94,12 @@ body {
 ============================================================ */
 @keyframes sunGlow {
   0%, 100% {
-    box-shadow: 0 0 80px 40px rgba(251, 191, 36, 0.25),
-                0 0 200px 100px rgba(251, 191, 36, 0.1);
+    box-shadow: 0 0 48px 22px rgba(251, 191, 36, 0.14),
+                0 0 120px 60px rgba(251, 191, 36, 0.06);
   }
   50% {
-    box-shadow: 0 0 120px 60px rgba(251, 191, 36, 0.4),
-                0 0 300px 150px rgba(251, 191, 36, 0.2);
+    box-shadow: 0 0 72px 30px rgba(251, 191, 36, 0.22),
+                0 0 180px 90px rgba(251, 191, 36, 0.08);
   }
 }
 
@@ -109,7 +109,7 @@ body {
 }
 
 .sun-orb {
-  animation: sunGlow 4s ease-in-out infinite, sunPulse 4s ease-in-out infinite;
+  animation: sunGlow 5s ease-in-out infinite, sunPulse 4s ease-in-out infinite;
   will-change: box-shadow, transform;
 }
 
@@ -178,17 +178,17 @@ body {
    GLASS MORPHISM UTILITIES
 ============================================================ */
 .glass {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-light {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px) saturate(110%);
+  -webkit-backdrop-filter: blur(16px) saturate(110%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 /* ============================================================
@@ -198,10 +198,10 @@ body {
 /* Sunny / Clear */
 .bg-sunny-day {
   background: linear-gradient(160deg,
-    #87CEEB 0%,
-    #60A5FA 30%,
-    #3B82F6 65%,
-    #1D4ED8 100%
+    #BEE7F8 0%,
+    #90C7EC 35%,
+    #6399C9 70%,
+    #375F8A 100%
   );
 }
 .bg-sunny-night {
