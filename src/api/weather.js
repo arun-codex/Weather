@@ -32,15 +32,17 @@ export async function fetchWeatherByCoords(lat, lon) {
       'uv_index',
       'surface_pressure',
       'precipitation',
+      'visibility',
       'is_day',
     ].join(','),
-    // Hourly for next 24 hours
+    // Hourly for next 48 hours
     hourly: [
       'temperature_2m',
       'apparent_temperature',
       'weather_code',
       'precipitation_probability',
       'wind_speed_10m',
+      'precipitation',
     ].join(','),
     // Daily for next 7 days
     daily: [

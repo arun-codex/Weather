@@ -187,7 +187,7 @@ export default function App() {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto">
                       <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-w-[120px]">
                         <div className="flex items-center gap-2 text-white/55 text-xs uppercase tracking-[0.2em]"><Wind size={12} /> Wind</div>
-                        <div className="text-white font-semibold mt-1">{windSpeed.toFixed?.(1) ?? windSpeed} km/h</div>
+                        <div className="text-white font-semibold mt-1">{windSpeed.toFixed(1)} km/h</div>
                         <div className="text-white/55 text-xs">{windLabel}</div>
                       </div>
                       <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-w-[120px]">
@@ -202,7 +202,7 @@ export default function App() {
                       </div>
                       <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-w-[120px]">
                         <div className="flex items-center gap-2 text-white/55 text-xs uppercase tracking-[0.2em]"><Sparkles size={12} /> AQI</div>
-                        <div className="text-white font-semibold mt-1">{aqiValue ?? '—'}</div>
+                        <div className="text-white font-semibold mt-1">{aqiValue != null ? Math.round(aqiValue) : '—'}</div>
                         <div className={`text-xs ${aqiInfo.color}`}>{aqiInfo.label}</div>
                       </div>
                     </div>

@@ -1,7 +1,7 @@
 /**
  * HourlyForecast.jsx
  * -------------------
- * Horizontally scrollable strip showing weather hour-by-hour for the next 24 hours.
+ * Horizontally scrollable strip showing weather hour-by-hour for the next 48 hours.
  * Each item shows: time, condition icon, temperature, precipitation probability.
  */
 
@@ -33,8 +33,8 @@ const itemVariants = {
 
 export default function HourlyForecast({ hourly }) {
   // hourly comes from Open-Meteo; it has 168 hours (7 days × 24).
-  // We only show the next 24 hours.
-  const hours = hourly.time.slice(0, 24).map((time, i) => ({
+  // We show the next 48 hours.
+  const hours = hourly.time.slice(0, 48).map((time, i) => ({
     time:    time,
     temp:    hourly.temperature_2m[i],
     code:    hourly.weather_code[i],
@@ -50,7 +50,7 @@ export default function HourlyForecast({ hourly }) {
     >
       {/* Section title */}
       <p className="text-xs text-white/50 uppercase tracking-widest mb-3 font-medium px-1">
-        Hourly Forecast
+        Hourly Forecast (48 hours)
       </p>
 
       {/* Scrollable strip */}
