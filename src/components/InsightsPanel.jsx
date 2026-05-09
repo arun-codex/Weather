@@ -227,12 +227,12 @@ export default function InsightsPanel() {
         <p className="text-sm text-white/90 leading-relaxed break-words">{recommendation.weather_summary}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Section title="What to do today" items={recommendation.what_to_do} icon={Activity} emptyText="Keep your normal routine, with light outdoor activity if you want it." />
-        <Section title="What to avoid" items={recommendation.what_to_avoid} icon={ShieldAlert} emptyText="No major avoidances right now." />
-        <Section title="Clothing" items={recommendation.clothing} icon={Shirt} emptyText="Comfortable everyday wear should work." />
-        <Section title="Health alerts" items={recommendation.health_alerts} icon={ShieldAlert} emptyText="No major health alerts detected." />
-        <Section title="Productivity tips" items={recommendation.productivity_tips} icon={BookOpen} emptyText="Indoor focus blocks and light errands both look fine." />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Section title="What to do today" items={recommendation.what_to_do.slice(0, 2)} icon={Activity} emptyText="Keep your normal routine, with light outdoor activity if you want it." />
+        <Section title="What to avoid" items={recommendation.what_to_avoid.slice(0, 2)} icon={ShieldAlert} emptyText="No major avoidances right now." />
+        <Section title="Clothing" items={recommendation.clothing.slice(0, 2)} icon={Shirt} emptyText="Comfortable everyday wear should work." />
+        <Section title="Health alerts" items={recommendation.health_alerts.slice(0, 2)} icon={ShieldAlert} emptyText="No major health alerts detected." />
+        <Section title="Productivity tips" items={recommendation.productivity_tips.slice(0, 2)} icon={BookOpen} emptyText="Indoor focus blocks and light errands both look fine." />
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-xs text-white/65">
