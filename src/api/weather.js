@@ -89,10 +89,25 @@ export async function fetchAQI(lat, lon) {
  */
 export async function searchCity(query) {
   if (!query || query.length < 2) return [];
+  // Use q param (per Open-Meteo docs). Return up to 8 results in English.
   const { data } = await axios.get(`${GEO_BASE}/search`, {
-    params: { name: query, count: 6, language: 'en', format: 'json' },
+    params: { q: query, count: 8, language: 'en', format: 'json' },
   });
-  return data.results ?? [];
+
+  const raw = data.results ?? [];
+  // Normalize results to a consistent shape used across the app
+  const results = raw.map((r, idx) => ({
+    id: r.id ?? `${r.name}-${r.latitude}-${r.longitude}-${idx}`,
+    name: r.name ?? '',
+    admin1: r.admin1 ?? r.admin2 ?? '',
+    country: r.country ?? '',
+    country_code: r.country_code ?? r.countryCode ?? '',
+    lat: r.latitude ?? r.lat ?? null,
+    lon: r.longitude ?? r.lon ?? null,
+    raw: r,
+  }));
+
+  return results;
 }
 
 /**

@@ -34,6 +34,7 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
 
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
+  const dropdownRef = useRef(null);
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isMobile, setIsMobile] = useState(false);
@@ -82,7 +83,11 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
   // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (!wrapperRef.current?.contains(e.target)) {
+      // If click is neither inside the input wrapper nor inside the portal dropdown, close
+      const target = e.target;
+      const clickedInsideWrapper = wrapperRef.current?.contains(target);
+      const clickedInsideDropdown = dropdownRef.current?.contains?.(target);
+      if (!clickedInsideWrapper && !clickedInsideDropdown) {
         setFocused(false);
       }
     };
@@ -159,7 +164,13 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
           />
           <input
             ref={inputRef}
-            type="text"
+            type="search"
+            name="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            inputMode="search"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -237,15 +248,16 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
                 }
               : baseStyle;
 
-            return createPortal(
-              <motion.div
-                id="search-dropdown"
+              return createPortal(
+                <motion.div
+                  ref={dropdownRef}
+                  id="search-dropdown"
                 initial={{ opacity: 0, y: -8, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.97 }}
                 transition={{ duration: 0.15 }}
                 style={mobileStyle}
-                className="glass rounded-2xl overflow-hidden shadow-glass border border-white/10 max-h-96 overflow-y-auto"
+                  className="glass rounded-2xl overflow-hidden shadow-glass border border-white/10 max-h-96 overflow-y-auto"
                 role="listbox"
               >
                 {/* Search Results */}
