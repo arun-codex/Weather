@@ -27,6 +27,7 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
   const wrapperRef    = useRef(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [dropdownStyle, setDropdownStyle] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Debounced search — waits 350ms after user stops typing
   const handleChange = useCallback((e) => {
@@ -94,12 +95,26 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
   }, []);
 
   useEffect(() => {
-    // Reset active index when results change
-    setActiveIndex(-1);
+    // When results change, default to first item for easier keyboard navigation
+    setActiveIndex(results.length > 0 ? 0 : -1);
   }, [results.length]);
 
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 640);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   return (
-    <div ref={wrapperRef} className="search-wrapper relative w-full max-w-sm mx-auto">
+    <div
+      ref={wrapperRef}
+      className="search-wrapper relative w-full max-w-sm mx-auto"
+      role="combobox"
+      aria-haspopup="listbox"
+      aria-owns="search-results"
+      aria-expanded={focused && results.length > 0}
+    >
       {/* Input row */}
       <div className="flex gap-2 items-center">
         <div className="relative flex-1">
@@ -114,6 +129,9 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => setFocused(true)}
+            aria-autocomplete="list"
+            aria-controls="search-results"
+            aria-activedescendant={activeIndex >= 0 ? `search-item-${activeIndex}` : undefined}
             placeholder={currentCity || 'Search city…'}
             className="
               w-full pl-9 pr-9 py-2.5 rounded-2xl text-sm text-white
@@ -152,35 +170,42 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
       {/* Dropdown results */}
       <AnimatePresence>
         {focused && results.length > 0 && (() => {
-          // compute dropdown placement
           const rect = wrapperRef.current?.getBoundingClientRect();
-          const style = rect
+          const baseStyle = rect
             ? { position: 'fixed', left: rect.left + 'px', top: (rect.bottom + 8) + 'px', width: rect.width + 'px', zIndex: 9999 }
             : { position: 'absolute', top: '100%', left: 0, right: 0 };
 
+          const mobileStyle = isMobile
+            ? { position: 'fixed', left: 8 + 'px', right: 8 + 'px', top: (rect?.bottom ?? 0) + 8 + 'px', zIndex: 9999 }
+            : baseStyle;
+
+          const itemBaseClasses = 'w-full text-left px-4 py-3 flex items-center gap-3 text-white transition-colors border-b border-white/5 last:border-0';
+          const itemActive = 'bg-white/12';
+          const itemHover = 'hover:bg-white/10';
+
           return createPortal(
             <motion.div
+              id="search-results"
               initial={{ opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y:  4, scale: 1 }}
               exit={{    opacity: 0, y: -8, scale: 0.97 }}
               transition={{ duration: 0.15 }}
-              style={style}
-              className="glass rounded-2xl overflow-hidden shadow-2xl"
+              style={isMobile ? mobileStyle : baseStyle}
+              className={`glass rounded-2xl overflow-hidden shadow-2xl ${isMobile ? 'text-base' : 'text-sm'}`}
               role="listbox"
-              aria-activedescendant={activeIndex >= 0 ? `search-item-${activeIndex}` : undefined}
             >
               {results.map((city, i) => (
                 <button
+                  role="option"
+                  aria-selected={i === activeIndex}
+                  tabIndex={-1}
                   id={`search-item-${i}`}
                   key={`${city.id ?? i}`}
                   onMouseDown={() => handleSelect(city)}
                   onMouseEnter={() => setActiveIndex(i)}
-                  className={
-                    `w-full text-left px-4 py-3 flex items-center gap-3 text-white transition-colors border-b border-white/5 last:border-0 ` +
-                    (i === activeIndex ? 'bg-white/10' : 'hover:bg-white/10')
-                  }
+                  className={`${itemBaseClasses} ${i === activeIndex ? itemActive : itemHover} ${isMobile ? 'px-5 py-4' : ''}`}
                 >
-                  <MapPin size={14} className="text-white/40 flex-shrink-0" />
+                  <MapPin size={16} className="text-white/40 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium">{city.name}</p>
                     <p className="text-xs text-white/50">{[city.admin1, city.country].filter(Boolean).join(', ')}</p>
