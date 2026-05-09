@@ -99,7 +99,7 @@ export default function SavedCities({ currentCity, currentCoords, onCitySelect }
   };
 
   return (
-    <div className="w-full glass rounded-3xl p-6 hidden md:block animate-in slide-in-from-left-8 duration-700">
+       <div className="w-full glass rounded-3xl p-6 hidden md:block animate-in slide-in-from-left-8 duration-700" role="region" aria-label="Saved Cities">
       <div className="flex items-center justify-between mb-4">
         <h2 className="opacity-80 text-sm font-medium uppercase tracking-wider">
           Saved Cities

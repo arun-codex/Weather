@@ -14,3 +14,9 @@ if (typeof globalThis.localStorage === 'undefined' || !globalThis.localStorage) 
 		};
 	})();
 }
+
+// Ensure document has required basic metadata for accessibility checks
+if (typeof document !== 'undefined') {
+	if (!document.title) document.title = 'Test - Weather App';
+	if (!document.documentElement.lang) document.documentElement.lang = 'en';
+}

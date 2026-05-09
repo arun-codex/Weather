@@ -29,9 +29,7 @@ describe('Accessibility audit', () => {
 
     const blocking = results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
     if (blocking.length > 0) {
-      // show a readable summary for debugging
-      const summary = blocking.map(b => ({ id: b.id, impact: b.impact, nodes: b.nodes.length }));
-      console.error('Axe blocking violations:', summary);
+      console.error('Axe detailed violations:', JSON.stringify(results.violations, null, 2));
     }
 
     expect(blocking.length).toBe(0);

@@ -130,7 +130,7 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
             onKeyDown={handleKeyDown}
             onFocus={() => setFocused(true)}
             aria-autocomplete="list"
-            aria-controls="search-results"
+            aria-controls={results.length > 0 ? 'search-results' : undefined}
             aria-activedescendant={activeIndex >= 0 ? `search-item-${activeIndex}` : undefined}
             placeholder={currentCity || 'Search city…'}
             className="
