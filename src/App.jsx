@@ -38,6 +38,7 @@ import WeatherDetails  from './components/WeatherDetails';
 import WeatherAlerts   from './components/WeatherAlerts';
 import LoadingSkeleton from './components/LoadingSkeleton';
 import SavedCities     from './components/SavedCities';
+import InsightsPanel   from './components/InsightsPanel';
 
 import WeatherPulse from './components/WeatherPulse';
 import { getAqiInfo, describeWind } from './utils/formatters';
@@ -234,6 +235,7 @@ export default function App() {
                     className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto no-scrollbar pb-10 pr-2"
                   >
                     <WeatherAlerts current={data.weather.current} aqi={data.aqi} />
+                    <InsightsPanel />
 
                     <DailyForecast daily={data.weather.daily} />
                     <WeatherDetails current={data.weather.current} daily={data.weather.daily} aqi={data.aqi} />

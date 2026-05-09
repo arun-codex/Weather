@@ -1,88 +1,246 @@
+import { useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { getAstronomyData } from '../utils/astronomy';
-import { Sparkles, Moon, Sun, Wind, AlertTriangle } from 'lucide-react';
+import {
+  Sparkles,
+  Sun,
+  Moon,
+  Shirt,
+  ShieldAlert,
+  BookOpen,
+  Activity,
+} from 'lucide-react';
+
+function Section({ title, items, icon: Icon, emptyText }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/45">
+        <Icon size={13} />
+        <span>{title}</span>
+      </div>
+      {items.length > 0 ? (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li key={item} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/88 leading-relaxed">
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/55">
+          {emptyText}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function InsightsPanel() {
   const { coords, weatherData, aqiData } = useStore();
 
-  if (!coords || !weatherData) return null;
+  const recommendation = useMemo(() => {
+    if (!coords || !weatherData) return null;
 
-  const current = weatherData.current;
-  const astro = getAstronomyData(coords.lat, coords.lon);
-  
-  const insights = [];
+    const current = weatherData.current;
+    const daily = weatherData.daily;
+    const astro = getAstronomyData(coords.lat, coords.lon);
 
-  // Astronomy insight
-  if (astro) {
-    if (astro.sun.isDay) {
-      insights.push({
-        id: 'astro-day',
-        icon: Sun,
-        color: 'text-yellow-400',
-        text: `Sunset will be at ${astro.sun.sunset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
-      });
+    const temperature = current.temperature_2m ?? 0;
+    const feelsLike = current.apparent_temperature ?? temperature;
+    const humidity = current.relative_humidity_2m ?? 0;
+    const windSpeed = current.wind_speed_10m ?? 0;
+    const uvIndex = current.uv_index ?? 0;
+    const precipitation = current.precipitation ?? 0;
+    const visibility = current.visibility ?? 999999;
+    const aqi = aqiData?.european_aqi ?? aqiData?.us_aqi ?? null;
+    const isDay = current.is_day === 1 || astro?.sun?.isDay;
+    const sunrise = daily?.sunrise?.[0];
+    const sunset = daily?.sunset?.[0];
+    const weatherCode = current.weather_code ?? 0;
+    const condition = weatherCode >= 60 || precipitation > 0
+      ? 'rain'
+      : weatherCode >= 45
+        ? 'fog'
+        : weatherCode >= 70
+          ? 'snow'
+          : weatherCode >= 95
+            ? 'storm'
+            : temperature > 30
+              ? 'hot'
+              : temperature < 10
+                ? 'cold'
+                : 'clear';
+
+    const weatherSummary = isDay
+      ? `Daytime ${condition} conditions in ${coords.lat.toFixed(2)}, ${coords.lon.toFixed(2)}.`
+      : `Night conditions with ${condition} weather and cooler air.`;
+
+    const whatToDo = [];
+    const whatToAvoid = [];
+    const clothing = [];
+    const healthAlerts = [];
+    const productivityTips = [];
+
+    if (temperature >= 38 || feelsLike >= 40) {
+      whatToDo.push('Drink extra water and stay in shade during peak heat.');
+      whatToAvoid.push('Avoid heavy workouts and long walks in direct sun.');
+      clothing.push('Light cotton clothing');
+      clothing.push('Hat and sunglasses');
+      healthAlerts.push('Heat and dehydration risk');
+    } else if (temperature <= 8) {
+      whatToDo.push('Layer up before heading out, especially early morning.');
+      whatToAvoid.push('Avoid staying outside too long if you are sensitive to cold.');
+      clothing.push('Hoodie or jacket');
+      clothing.push('Closed shoes');
+      healthAlerts.push('Cold exposure warning');
     } else {
-      insights.push({
-        id: 'astro-night',
-        icon: Moon,
-        color: 'text-indigo-300',
-        text: `The moon is currently a ${astro.moon.phaseName}.`
-      });
+      whatToDo.push('Good day for normal routines and light outdoor time.');
+      clothing.push('Comfortable daily wear');
     }
-  }
 
-  // AQI / Wind insight
-  if (aqiData) {
-    const aqi = aqiData.european_aqi;
-    const windSpeed = current.wind_speed_10m || 0;
-    
-    if (aqi > 100 && windSpeed < 10) {
-      insights.push({
-        id: 'aqi-bad-wind',
-        icon: AlertTriangle,
-        color: 'text-red-400',
-        text: 'High pollution due to low wind stagnation. Avoid prolonged outdoor exertion.'
-      });
-    } else if (aqi > 100 && current.precipitation > 0) {
-      insights.push({
-        id: 'aqi-rain',
-        icon: Sparkles,
-        color: 'text-blue-300',
-        text: 'Rain may soon improve the current poor air quality.'
-      });
-    } else if (aqi < 50) {
-      insights.push({
-        id: 'aqi-good',
-        icon: Wind,
-        color: 'text-green-300',
-        text: 'Air quality is excellent right now. Perfect time for outdoor activities!'
-      });
+    if (precipitation > 0 || weatherCode >= 60) {
+      whatToDo.push('Carry an umbrella or rain layer if you go out.');
+      whatToAvoid.push('Avoid slippery shortcuts and exposed electronics.');
+      clothing.push('Waterproof outerwear');
+      healthAlerts.push('Rain-ready travel caution');
     }
-  }
 
-  // Extreme weather insight
-  if (current.temperature_2m > 35) {
-    insights.push({ id: 'heat', icon: AlertTriangle, color: 'text-orange-400', text: 'Extreme heat detected. Stay hydrated.' });
-  } else if (current.temperature_2m < 0) {
-    insights.push({ id: 'cold', icon: AlertTriangle, color: 'text-blue-200', text: 'Freezing temperatures. Frost possible.' });
-  }
+    if (windSpeed >= 30) {
+      whatToDo.push('Secure loose items before leaving home.');
+      whatToAvoid.push('Avoid biking or balcony time in strong gusts.');
+      healthAlerts.push('Strong wind caution');
+    } else if (windSpeed >= 15) {
+      whatToDo.push('Plan lighter outdoor tasks if you stay outside.');
+    }
 
-  if (insights.length === 0) return null;
+    if (uvIndex >= 7) {
+      whatToDo.push('Use sunscreen before midday outdoor exposure.');
+      whatToAvoid.push('Avoid long sun exposure around noon.');
+      clothing.push('Sunglasses');
+      healthAlerts.push('High UV warning');
+    }
+
+    if (aqi !== null) {
+      if (aqi >= 150) {
+        whatToDo.push('Keep activity indoors and close windows if possible.');
+        whatToAvoid.push('Avoid outdoor cardio and long commutes on foot.');
+        healthAlerts.push('Pollution warning');
+      } else if (aqi >= 100) {
+        whatToDo.push('Short outdoor trips are fine, but keep exertion light.');
+        whatToAvoid.push('Avoid intense workouts outside.');
+        healthAlerts.push('Sensitive groups should limit exposure');
+      } else if (aqi <= 50) {
+        whatToDo.push('Great air quality for a run or an evening walk.');
+        productivityTips.push('Best window for outdoor exercise: now to early evening.');
+      }
+    }
+
+    if (humidity >= 75 && temperature >= 24) {
+      healthAlerts.push('Muggy air may feel tiring today');
+      whatToDo.push('Keep breaks short and drink more water than usual.');
+    }
+
+    if (visibility < 5000) {
+      whatToAvoid.push('Avoid fast driving and early highway travel.');
+      productivityTips.push('Use indoor focus blocks until visibility improves.');
+    }
+
+    if (sunrise && sunset) {
+      const sunriseText = new Date(sunrise).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const sunsetText = new Date(sunset).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      productivityTips.push(`Best outdoor window: ${sunriseText} to ${sunsetText}.`);
+    }
+
+    if (temperature >= 25 && temperature <= 34 && aqi !== null && aqi < 100 && windSpeed < 20) {
+      productivityTips.push('Good day for a short walk, errands, or content creation outdoors.');
+    } else if (temperature >= 30 || feelsLike >= 35 || (aqi !== null && aqi >= 100)) {
+      productivityTips.push('Best time for study, coding, or indoor work is the afternoon.');
+    } else if (temperature <= 12 || condition === 'rain') {
+      productivityTips.push('Indoor work blocks will feel more productive than long outings.');
+    }
+
+    if (condition === 'rain') {
+      clothing.unshift('Waterproof footwear');
+      whatToDo.push('Leave a little earlier if you need to travel.');
+      productivityTips.push('If possible, schedule travel before the rain window.');
+    }
+
+    if (condition === 'hot') {
+      productivityTips.push('Morning is better for errands; midday is for indoor tasks.');
+    }
+
+    if (condition === 'cold') {
+      productivityTips.push('Late morning is the safest slot for a quick walk.');
+    }
+
+    if (condition === 'storm') {
+      whatToAvoid.push('Avoid open areas and unnecessary travel if storms build up.');
+      healthAlerts.push('Thunderstorm safety alert');
+      productivityTips.push('Keep plans flexible and stay near shelter.');
+    }
+
+    const moodMessage = (() => {
+      if (condition === 'rain') return 'Rain is around, so keep plans light and travel a bit earlier.';
+      if (condition === 'hot') return 'A hot day ahead, so pace yourself and keep water close.';
+      if (aqi !== null && aqi >= 150) return 'Air quality is poor today. Indoor comfort is the safer call.';
+      if (aqi !== null && aqi <= 50 && temperature >= 20 && temperature <= 32) return 'Clean air and decent temperatures make this a good day to move.';
+      if (!isDay) return 'Night looks calm enough for a slow, quiet reset.';
+      return 'A balanced day for getting things done without overdoing it.';
+    })();
+
+    const unique = (items) => [...new Set(items)].slice(0, 4);
+
+    return {
+      weather_summary: weatherSummary,
+      what_to_do: unique(whatToDo),
+      what_to_avoid: unique(whatToAvoid),
+      clothing: unique(clothing),
+      health_alerts: unique(healthAlerts),
+      productivity_tips: unique(productivityTips),
+      mood_message: moodMessage,
+    };
+  }, [coords, weatherData, aqiData]);
+
+  if (!recommendation) return null;
 
   return (
-    <div className="glass rounded-3xl p-6 flex flex-col gap-4 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400" />
-      <h3 className="text-white/80 font-medium flex items-center gap-2">
-        <Sparkles size={18} /> Environmental Insights
-      </h3>
-      
-      <div className="flex flex-col gap-3">
-        {insights.map(item => (
-          <div key={item.id} className="flex gap-3 items-start bg-white/5 p-3 rounded-2xl">
-            <item.icon size={18} className={`mt-0.5 shrink-0 ${item.color}`} />
-            <p className="text-sm text-white/90 leading-relaxed">{item.text}</p>
-          </div>
-        ))}
+    <div className="glass rounded-3xl p-6 flex flex-col gap-5 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-amber-300" />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-white font-semibold flex items-center gap-2">
+            <Sparkles size={18} /> Smart Weather Suggestions
+          </h3>
+          <p className="text-white/55 text-sm mt-1">Practical advice from the current weather mix.</p>
+        </div>
+        <div className="rounded-2xl bg-white/5 border border-white/10 px-3 py-2 text-right min-w-[120px]">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-white/45">Mood</p>
+          <p className="text-sm text-white/90 mt-1">{recommendation.mood_message}</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
+        <p className="text-xs uppercase tracking-[0.24em] text-white/45">Weather summary</p>
+        <p className="text-sm text-white/90 leading-relaxed">{recommendation.weather_summary}</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5">
+        <Section title="What to do today" items={recommendation.what_to_do} icon={Activity} emptyText="Keep your normal routine, with light outdoor activity if you want it." />
+        <Section title="What to avoid" items={recommendation.what_to_avoid} icon={ShieldAlert} emptyText="No major avoidances right now." />
+        <Section title="Clothing" items={recommendation.clothing} icon={Shirt} emptyText="Comfortable everyday wear should work." />
+        <Section title="Health alerts" items={recommendation.health_alerts} icon={ShieldAlert} emptyText="No major health alerts detected." />
+        <Section title="Productivity tips" items={recommendation.productivity_tips} icon={BookOpen} emptyText="Indoor focus blocks and light errands both look fine." />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-xs text-white/65">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 flex items-center gap-2">
+          <Sun size={13} className="text-yellow-300" />
+          <span>Day and sun aware</span>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 flex items-center gap-2">
+          <Moon size={13} className="text-indigo-300" />
+          <span>Night and rest aware</span>
+        </div>
       </div>
     </div>
   );
