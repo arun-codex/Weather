@@ -11,7 +11,7 @@
  *  - currentCity: string shown in input when not focused
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
