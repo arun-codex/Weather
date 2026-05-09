@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
