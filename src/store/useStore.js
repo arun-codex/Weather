@@ -16,7 +16,11 @@ export const useStore = create((set, get) => ({
   selectedTimeIndex: 0, // 0 to 47 (48 hours of hourly forecast)
 
   // Actions
-  setCoords: (coords, cityName = '') => set({ coords, cityName }),
+  setCoords: (coords, cityName) =>
+    set((prev) => ({
+      coords,
+      ...(typeof cityName !== 'undefined' ? { cityName } : {}),
+    })),
   setActiveLayer: (layer) => set({ activeLayer: layer }),
   setSelectedTimeIndex: (index) => set({ selectedTimeIndex: index }),
 
@@ -30,10 +34,13 @@ export const useStore = create((set, get) => ({
         reverseGeocode(lat, lon),
       ]);
 
+      // Atomically update coords + fetched data so all subscribers see a consistent state
       set({
+        coords: { lat, lon },
         weatherData: weather,
         aqiData: aqi,
-        cityName: get().cityName || city, // Prefer manually set name if available
+        // Always update geocoded name from the reverse geocode result to avoid stale labels
+        cityName: city,
         lastRefresh: new Date(),
         selectedTimeIndex: 0,
         loading: false,

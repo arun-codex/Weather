@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 const STORAGE_KEY = 'weather.savedCities';
 
 const DEFAULT_SAVED_CITIES = [
-  { id: 'tokyo-jp', name: 'Tokyo, Japan', latitude: 35.6895, longitude: 139.6917 },
-  { id: 'london-uk', name: 'London, UK', latitude: 51.5085, longitude: -0.1257 },
-  { id: 'new-york-us', name: 'New York, USA', latitude: 40.7128, longitude: -74.006 },
+  { id: 'tokyo-jp', name: 'Tokyo, Japan', lat: 35.6895, lon: 139.6917 },
+  { id: 'london-uk', name: 'London, UK', lat: 51.5085, lon: -0.1257 },
+  { id: 'new-york-us', name: 'New York, USA', lat: 40.7128, lon: -74.006 },
 ];
 
 function makeCityId(name, coords) {
@@ -17,10 +17,11 @@ function makeCityId(name, coords) {
 }
 
 function toSelectableCity(city) {
+  // Normalize to { name, lat, lon, country_code }
   return {
     name: city.name,
-    latitude: city.latitude,
-    longitude: city.longitude,
+    lat: city.lat ?? city.latitude ?? city.latitude ?? null,
+    lon: city.lon ?? city.longitude ?? city.longitude ?? null,
     country_code: city.country_code,
   };
 }
@@ -29,9 +30,11 @@ function isSameCity(a, b) {
   if (!a || !b) return false;
 
   const sameName = a.name.trim().toLowerCase() === b.name.trim().toLowerCase();
-  const sameCoords =
-    Math.abs(Number(a.latitude) - Number(b.latitude)) < 0.01 &&
-    Math.abs(Number(a.longitude) - Number(b.longitude)) < 0.01;
+  const aLat = Number(a.lat ?? a.latitude ?? 0);
+  const aLon = Number(a.lon ?? a.longitude ?? 0);
+  const bLat = Number(b.lat ?? b.latitude ?? 0);
+  const bLon = Number(b.lon ?? b.longitude ?? 0);
+  const sameCoords = Math.abs(aLat - bLat) < 0.01 && Math.abs(aLon - bLon) < 0.01;
 
   return sameName || sameCoords;
 }
@@ -48,8 +51,18 @@ function uniqueCities(cities) {
 export default function SavedCities({ currentCity, currentCoords, onCitySelect }) {
   const [savedCities, setSavedCities] = useState(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      return Array.isArray(saved) && saved.length > 0 ? uniqueCities(saved) : DEFAULT_SAVED_CITIES;
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (Array.isArray(raw) && raw.length > 0) {
+        const normalized = raw.map((c) => ({
+          id: c.id || makeCityId(c.name || '', c),
+          name: c.name || c.displayName || '',
+          lat: c.lat ?? c.latitude ?? c.lat ?? null,
+          lon: c.lon ?? c.longitude ?? c.lon ?? null,
+        })).filter((c) => c.lat && c.lon);
+
+        return uniqueCities(normalized);
+      }
+      return DEFAULT_SAVED_CITIES;
     } catch {
       return DEFAULT_SAVED_CITIES;
     }
@@ -67,8 +80,8 @@ export default function SavedCities({ currentCity, currentCoords, onCitySelect }
     return {
       id: makeCityId(name, currentCoords),
       name,
-      latitude: currentCoords.lat,
-      longitude: currentCoords.lon,
+      lat: currentCoords.lat,
+      lon: currentCoords.lon,
     };
   }, [currentCity, currentCoords]);
 

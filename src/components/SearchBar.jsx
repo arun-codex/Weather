@@ -13,6 +13,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
 import { searchCity } from '../api/weather';
 
@@ -23,6 +24,9 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
   const [focused, setFocused]     = useState(false);
   const debounceTimer = useRef(null);
   const inputRef      = useRef(null);
+  const wrapperRef    = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [dropdownStyle, setDropdownStyle] = useState(null);
 
   // Debounced search — waits 350ms after user stops typing
   const handleChange = useCallback((e) => {
@@ -53,6 +57,24 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
     onSelectCity(city);
   };
 
+  const handleKeyDown = (e) => {
+    if (!results.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, results.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const sel = results[activeIndex >= 0 ? activeIndex : 0];
+      if (sel) handleSelect(sel);
+    } else if (e.key === 'Escape') {
+      setFocused(false);
+      setResults([]);
+    }
+  };
+
   const handleClear = () => {
     setQuery('');
     setResults([]);
@@ -62,7 +84,7 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handler = (e) => {
-      if (!inputRef.current?.closest('.search-wrapper')?.contains(e.target)) {
+      if (!wrapperRef.current?.contains(e.target)) {
         setFocused(false);
         setResults([]);
       }
@@ -71,8 +93,13 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    // Reset active index when results change
+    setActiveIndex(-1);
+  }, [results.length]);
+
   return (
-    <div className="search-wrapper relative w-full max-w-sm mx-auto">
+    <div ref={wrapperRef} className="search-wrapper relative w-full max-w-sm mx-auto">
       {/* Input row */}
       <div className="flex gap-2 items-center">
         <div className="relative flex-1">
@@ -85,6 +112,7 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
             type="text"
             value={query}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             onFocus={() => setFocused(true)}
             placeholder={currentCity || 'Search city…'}
             className="
@@ -123,38 +151,46 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
 
       {/* Dropdown results */}
       <AnimatePresence>
-        {focused && results.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y:  4, scale: 1 }}
-            exit={{    opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ duration: 0.15 }}
-            className="
-              absolute top-full left-0 right-0 z-50
-              glass rounded-2xl overflow-hidden shadow-2xl
-            "
-          >
-            {results.map((city, i) => (
-              <button
-                key={`${city.id ?? i}`}
-                onMouseDown={() => handleSelect(city)}
-                className="
-                  w-full text-left px-4 py-3 flex items-center gap-3
-                  text-white hover:bg-white/10 transition-colors
-                  border-b border-white/5 last:border-0
-                "
-              >
-                <MapPin size={14} className="text-white/40 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium">{city.name}</p>
-                  <p className="text-xs text-white/50">
-                    {[city.admin1, city.country].filter(Boolean).join(', ')}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </motion.div>
-        )}
+        {focused && results.length > 0 && (() => {
+          // compute dropdown placement
+          const rect = wrapperRef.current?.getBoundingClientRect();
+          const style = rect
+            ? { position: 'fixed', left: rect.left + 'px', top: (rect.bottom + 8) + 'px', width: rect.width + 'px', zIndex: 9999 }
+            : { position: 'absolute', top: '100%', left: 0, right: 0 };
+
+          return createPortal(
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.97 }}
+              animate={{ opacity: 1, y:  4, scale: 1 }}
+              exit={{    opacity: 0, y: -8, scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              style={style}
+              className="glass rounded-2xl overflow-hidden shadow-2xl"
+              role="listbox"
+              aria-activedescendant={activeIndex >= 0 ? `search-item-${activeIndex}` : undefined}
+            >
+              {results.map((city, i) => (
+                <button
+                  id={`search-item-${i}`}
+                  key={`${city.id ?? i}`}
+                  onMouseDown={() => handleSelect(city)}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  className={
+                    `w-full text-left px-4 py-3 flex items-center gap-3 text-white transition-colors border-b border-white/5 last:border-0 ` +
+                    (i === activeIndex ? 'bg-white/10' : 'hover:bg-white/10')
+                  }
+                >
+                  <MapPin size={14} className="text-white/40 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">{city.name}</p>
+                    <p className="text-xs text-white/50">{[city.admin1, city.country].filter(Boolean).join(', ')}</p>
+                  </div>
+                </button>
+              ))}
+            </motion.div>,
+            document.body
+          );
+        })()}
       </AnimatePresence>
     </div>
   );

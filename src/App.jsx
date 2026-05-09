@@ -101,8 +101,25 @@ export default function App() {
 
   // Handle city selection from SearchBar
   const handleCitySelect = (city) => {
-    setManualCoords({ lat: city.latitude, lon: city.longitude });
-    setManualCityName(city.name + (city.country_code ? `, ${city.country_code}` : ''));
+    // Normalize incoming city object: accept {lat,lon} or {latitude,longitude}
+    const lat = city.lat ?? city.latitude ?? city.latitude ?? city.latitude;
+    const lon = city.lon ?? city.longitude ?? city.longitude ?? city.longitude;
+    const parsedLat = Number(lat);
+    const parsedLon = Number(lon);
+
+    if (!parsedLat || !parsedLon) {
+      // fallback: if invalid coords, just set name and attempt to reverse-geocode later
+      setManualCoords(null);
+      setManualCityName(city.name || '');
+      return;
+    }
+
+    setManualCoords({ lat: parsedLat, lon: parsedLon });
+    setManualCityName((city.name || '') + (city.country_code ? `, ${city.country_code}` : ''));
+    // Trigger immediate fetch for new coords
+    // useWeather hook will pick up manualCoords change; also call refresh to be explicit
+    // (refresh is a safe no-op if not yet mounted)
+    setTimeout(() => refresh?.(), 50);
   };
 
   // Handle GPS button
