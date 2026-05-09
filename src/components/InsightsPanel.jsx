@@ -13,21 +13,21 @@ import {
 
 function Section({ title, items, icon: Icon, emptyText }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/45">
+    <div className="space-y-2 min-w-0">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-white/45">
         <Icon size={13} />
         <span>{title}</span>
       </div>
       {items.length > 0 ? (
         <ul className="space-y-2">
           {items.map((item) => (
-            <li key={item} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/88 leading-relaxed">
+            <li key={item} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 leading-relaxed break-words">
               {item}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/55">
+        <p className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60 break-words">
           {emptyText}
         </p>
       )}
@@ -204,27 +204,30 @@ export default function InsightsPanel() {
   if (!recommendation) return null;
 
   return (
-    <div className="glass rounded-3xl p-6 flex flex-col gap-5 relative overflow-hidden">
+    <div className="glass rounded-3xl p-5 lg:p-6 flex flex-col gap-4 relative overflow-hidden min-w-0">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-amber-300" />
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="space-y-3 min-w-0">
+        <div className="flex items-center justify-between gap-3 min-w-0">
           <h3 className="text-white font-semibold flex items-center gap-2">
             <Sparkles size={18} /> Smart Weather Suggestions
           </h3>
-          <p className="text-white/55 text-sm mt-1">Practical advice from the current weather mix.</p>
+          <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-white/55">
+            Mood
+          </span>
         </div>
-        <div className="rounded-2xl bg-white/5 border border-white/10 px-3 py-2 text-right min-w-[120px]">
-          <p className="text-[10px] uppercase tracking-[0.22em] text-white/45">Mood</p>
-          <p className="text-sm text-white/90 mt-1">{recommendation.mood_message}</p>
+        <p className="text-white/55 text-sm leading-relaxed break-words">Practical advice from the current weather mix.</p>
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 min-w-0">
+          <p className="text-xs uppercase tracking-[0.22em] text-white/45">Mood message</p>
+          <p className="text-sm text-white/90 mt-1 leading-relaxed break-words">{recommendation.mood_message}</p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
         <p className="text-xs uppercase tracking-[0.24em] text-white/45">Weather summary</p>
-        <p className="text-sm text-white/90 leading-relaxed">{recommendation.weather_summary}</p>
+        <p className="text-sm text-white/90 leading-relaxed break-words">{recommendation.weather_summary}</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Section title="What to do today" items={recommendation.what_to_do} icon={Activity} emptyText="Keep your normal routine, with light outdoor activity if you want it." />
         <Section title="What to avoid" items={recommendation.what_to_avoid} icon={ShieldAlert} emptyText="No major avoidances right now." />
         <Section title="Clothing" items={recommendation.clothing} icon={Shirt} emptyText="Comfortable everyday wear should work." />
