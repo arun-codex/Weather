@@ -1,73 +1,90 @@
 /**
  * useGeolocation.js
  * ------------------
- * Custom React hook to request the browser's GPS location.
- * Returns the user's coordinates, loading state, and any error.
+ * Robust geolocation hook using Capacitor Geolocation plugin for native platforms
+ * and falling back to browser API + IP-based lookup.
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
 
 export function useGeolocation() {
-  const [coords, setCoords]   = useState(null);  // { lat, lon }
+  const [coords, setCoords]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const [permissionStatus, setPermissionStatus] = useState(null);
 
-  const requestPosition = useCallback(() => {
+  const requestPosition = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    if (!navigator.geolocation) {
-      setTimeout(() => {
-        setError('Geolocation is not supported by your browser.');
-        setLoading(false);
-      }, 0);
-      return;
-    }
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const perm = await Geolocation.checkPermissions();
+        setPermissionStatus(perm.location);
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+        if (perm.location !== 'granted') {
+          const req = await Geolocation.requestPermissions();
+          if (req.location !== 'granted') {
+            throw new Error('Location permission denied');
+          }
+        }
+
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          timeout: 10000
+        });
+
         setCoords({
           lat: position.coords.latitude,
           lon: position.coords.longitude,
         });
         setLoading(false);
-      },
-      async (err) => {
-        // If GPS is denied or unavailable, try IP-based lookup as a non-precise fallback
-        console.info('Geolocation error, attempting IP fallback:', err.message);
-        setError(err.message);
-
-        try {
-          const res = await fetch('https://ipapi.co/json/');
-          if (!res.ok) throw new Error('IP fallback failed');
-          const json = await res.json();
-          const lat = parseFloat(json.latitude ?? json.lat ?? null);
-          const lon = parseFloat(json.longitude ?? json.lon ?? null);
-          if (Number.isFinite(lat) && Number.isFinite(lon)) {
-            setCoords({ lat, lon });
-            setLoading(false);
-            return;
-          }
-        } catch (fallbackErr) {
-          console.info('IP fallback error:', fallbackErr?.message || fallbackErr);
+      } else {
+        // Web fallback
+        if (!navigator.geolocation) {
+          throw new Error('Geolocation not supported');
         }
 
-        // As a last resort, leave coords null so the UI can prompt the user
-        setCoords(null);
-        setLoading(false);
-      },
-      {
-        enableHighAccuracy: false,  // Faster; no need for GPS precision for weather
-        timeout: 8000,
-        maximumAge: 300000,         // Cache location for 5 minutes
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+            setLoading(false);
+          },
+          async (err) => {
+            console.warn('Browser geolocation failed, trying IP fallback:', err.message);
+            await fetchIpFallback(err.message);
+          },
+          { timeout: 8000 }
+        );
       }
-    );
+    } catch (err) {
+      console.error('Geolocation error:', err);
+      await fetchIpFallback(err.message);
+    }
   }, []);
 
+  const fetchIpFallback = async (originalError) => {
+    try {
+      const res = await fetch('https://ipapi.co/json/');
+      const json = await res.json();
+      if (json.latitude && json.longitude) {
+        setCoords({ lat: json.latitude, lon: json.longitude });
+        setLoading(false);
+      } else {
+        throw new Error('IP lookup failed');
+      }
+    } catch (fallbackErr) {
+      setError(originalError || 'Failed to determine location');
+      setLoading(false);
+      setCoords(null);
+    }
+  };
+
   useEffect(() => {
-    const id = setTimeout(requestPosition, 0);
-    return () => clearTimeout(id);
+    requestPosition();
   }, [requestPosition]);
 
-  return { coords, loading, error, retry: requestPosition };
+  return { coords, loading, error, retry: requestPosition, permissionStatus };
 }

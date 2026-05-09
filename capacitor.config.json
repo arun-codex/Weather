@@ -1,5 +1,6 @@
 {
-  "appId": "arunsingh.xyz",
-  "appName": "weather",
-  "webDir": "dist"
+  "appId": "com.arun.weather",
+  "appName": "Weather",
+  "webDir": "dist",
+  "bundledWebRuntime": false
 }
