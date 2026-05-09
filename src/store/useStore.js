@@ -10,6 +10,7 @@ export const useStore = create((set, get) => ({
   loading: false,
   error: null,
   lastRefresh: null,
+  _inFlight: null,
 
   // Map & Timeline state
   activeLayer: 'none', // 'none', 'precipitation', 'temperature', 'wind'
@@ -26,7 +27,10 @@ export const useStore = create((set, get) => ({
 
   // Data fetching
   fetchData: async (lat, lon) => {
-    set({ loading: true, error: null });
+    const key = `${Number(lat).toFixed(3)}:${Number(lon).toFixed(3)}`;
+    // Prevent duplicate concurrent fetches for the same coords
+    if (get()._inFlight === key) return;
+    set({ loading: true, error: null, _inFlight: key });
     try {
       const [weather, aqi, city] = await Promise.all([
         fetchWeatherByCoords(lat, lon),
@@ -35,7 +39,7 @@ export const useStore = create((set, get) => ({
       ]);
 
       // Atomically update coords + fetched data so all subscribers see a consistent state
-      set({
+      set((prev) => ({
         coords: { lat, lon },
         weatherData: weather,
         aqiData: aqi,
@@ -44,10 +48,11 @@ export const useStore = create((set, get) => ({
         lastRefresh: new Date(),
         selectedTimeIndex: 0,
         loading: false,
-      });
+        _inFlight: prev._inFlight === key ? null : prev._inFlight,
+      }));
     } catch (err) {
       console.error('Fetch error:', err);
-      set({ error: 'Failed to load data', loading: false });
+      set({ error: 'Failed to load data', loading: false, _inFlight: null });
     }
   },
 }));

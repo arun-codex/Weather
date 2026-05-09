@@ -11,23 +11,23 @@ import { useStore } from '../store/useStore';
 const REFRESH_INTERVAL = 10 * 60 * 1000;
 
 export function useWeather(coords) {
-  const { 
-    weatherData, 
-    aqiData, 
-    cityName, 
-    loading, 
-    error, 
-    lastRefresh, 
-    fetchData,
-    setCoords
-  } = useStore();
+  // Subscribe only to the pieces we need to avoid broad re-renders
+  const weatherData = useStore((s) => s.weatherData);
+  const aqiData = useStore((s) => s.aqiData);
+  const cityName = useStore((s) => s.cityName);
+  const loading = useStore((s) => s.loading);
+  const error = useStore((s) => s.error);
+  const lastRefresh = useStore((s) => s.lastRefresh);
+  const fetchData = useStore((s) => s.fetchData);
+  const setCoords = useStore((s) => s.setCoords);
 
   const coordsRef = useRef(coords);
-  
-  useEffect(() => { 
-    coordsRef.current = coords; 
+
+  useEffect(() => {
+    coordsRef.current = coords;
     if (coords) {
-      setCoords(coords);
+      // When coords change we set them in the store; do not overwrite a manual cityName
+      setCoords({ lat: coords.lat, lon: coords.lon });
     }
   }, [coords, setCoords]);
 
@@ -36,8 +36,8 @@ export function useWeather(coords) {
     fetchData(coords.lat, coords.lon);
 
     const interval = setInterval(() => {
-      const { lat, lon } = coordsRef.current;
-      fetchData(lat, lon);
+      const { lat, lon } = coordsRef.current || {};
+      if (lat && lon) fetchData(lat, lon);
     }, REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
