@@ -7,7 +7,6 @@ import {
   Moon,
   Shirt,
   ShieldAlert,
-  BookOpen,
   Activity,
 } from 'lucide-react';
 
@@ -232,7 +231,6 @@ export default function InsightsPanel() {
         <Section title="What to avoid" items={recommendation.what_to_avoid.slice(0, 2)} icon={ShieldAlert} emptyText="No major avoidances right now." />
         <Section title="Clothing" items={recommendation.clothing.slice(0, 2)} icon={Shirt} emptyText="Comfortable everyday wear should work." />
         <Section title="Health alerts" items={recommendation.health_alerts.slice(0, 2)} icon={ShieldAlert} emptyText="No major health alerts detected." />
-        <Section title="Productivity tips" items={recommendation.productivity_tips.slice(0, 2)} icon={BookOpen} emptyText="Indoor focus blocks and light errands both look fine." />
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-xs text-white/65">

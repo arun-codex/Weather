@@ -59,7 +59,7 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="glass rounded-3xl px-8 py-10 text-center text-white space-y-2 relative overflow-hidden border border-white/10"
+      className="glass rounded-[2rem] px-6 py-8 lg:px-10 lg:py-12 text-center text-white space-y-3 relative overflow-hidden border border-white/10"
       style={cardStyle}
     >
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-white/0 via-white/45 to-white/0 opacity-70" />
@@ -73,23 +73,23 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="text-base font-medium tracking-wide text-white/80"
+        className="text-sm lg:text-base font-medium tracking-wide text-white/80"
       >
         {cityName}
       </motion.p>
 
       {/* Time */}
-      <p className="text-xs text-white/50 tracking-widest uppercase">
+      <p className="text-[11px] lg:text-xs text-white/55 tracking-[0.28em] uppercase">
         {periodLabel} · {formatCurrentTime()}
       </p>
 
       {/* Animated weather icon */}
       <motion.div
         animate={animVariant}
-        className="flex justify-center my-4"
+        className="flex justify-center my-3 lg:my-5"
       >
         <IconComp
-          size={90}
+          size={92}
           strokeWidth={1.2}
           className="text-white drop-shadow-lg"
         />
@@ -100,24 +100,24 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1,   opacity: 1 }}
         transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-        className="text-8xl font-black tracking-tighter leading-none"
+        className="text-[5.5rem] sm:text-8xl lg:text-[7.5rem] font-black tracking-tighter leading-none"
       >
         {temp}°
       </motion.p>
 
       {/* Condition label */}
-      <p className="text-lg font-light text-white/90 mt-1">
+      <p className="text-base lg:text-lg font-light text-white/90 mt-1">
         {info.label}
       </p>
 
-      <div className="flex items-center justify-center gap-2 pt-2 text-xs text-white/55 uppercase tracking-[0.24em]">
+      <div className="flex items-center justify-center gap-2 pt-2 text-[10px] lg:text-xs text-white/55 uppercase tracking-[0.24em]">
         <span className="h-px w-6 bg-white/20" />
         <span>Feels like {feelsLike}°</span>
         <span className="h-px w-6 bg-white/20" />
       </div>
 
       {/* High / Low / Feels Like */}
-      <div className="flex items-center justify-center gap-4 mt-3 text-sm text-white/60">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-3 text-sm text-white/60">
         <span>H: <span className="text-white font-medium">{highTemp}°</span></span>
         <span className="w-px h-4 bg-white/20" />
         <span>L: <span className="text-white font-medium">{lowTemp}°</span></span>

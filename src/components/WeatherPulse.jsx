@@ -1,152 +1,182 @@
 /**
- * WeatherPulse.jsx
- * ----------------
- * A compact utility panel replacing the old timeline scrubber.
- * Shows the next few hours, a condition-aware tip, and a small animated pulse.
+ * LifestyleInsights.jsx
+ * ---------------------
+ * Premium lifestyle guidance card:
+ * - best workout time
+ * - best travel time
+ * - study mode
+ * - mood insight
  */
 
 import { motion } from 'framer-motion';
-import { AlertTriangle, CloudRain, SunMedium, Wind, Snowflake, CloudFog } from 'lucide-react';
-import { getWeatherInfo } from '../utils/weatherCodes';
-import { formatHour, roundTemp } from '../utils/formatters';
+import { useMemo } from 'react';
+import { Dumbbell, PlaneTakeoff, BookOpen, Sparkles, TimerReset, MoonStar } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { formatHour, getAqiInfo } from '../utils/formatters';
 
-const CONDITION_TIPS = {
-  sunny: {
-    title: 'Bright and clear',
-    tip: 'Great time to go outside. Use sun protection and stay hydrated.',
-    icon: SunMedium,
-    accent: 'from-amber-300 to-orange-400',
-  },
-  cloudy: {
-    title: 'Stable cloud cover',
-    tip: 'Good for a calm day. Carry a light layer if you are heading out late.',
-    icon: CloudFog,
-    accent: 'from-slate-300 to-slate-500',
-  },
-  rain: {
-    title: 'Rain incoming',
-    tip: 'Take an umbrella and avoid long outdoor plans if the rain strengthens.',
-    icon: CloudRain,
-    accent: 'from-sky-300 to-blue-500',
-  },
-  snow: {
-    title: 'Cold weather ahead',
-    tip: 'Dress in layers and watch for slippery surfaces on the road.',
-    icon: Snowflake,
-    accent: 'from-cyan-200 to-sky-400',
-  },
-  thunder: {
-    title: 'Storm activity',
-    tip: 'Stay indoors if possible and avoid exposed areas during lightning.',
-    icon: AlertTriangle,
-    accent: 'from-violet-300 to-fuchsia-400',
-  },
-  fog: {
-    title: 'Low visibility',
-    tip: 'Drive carefully and allow extra time for your commute.',
-    icon: CloudFog,
-    accent: 'from-zinc-300 to-slate-500',
-  },
-};
+function InsightCard({ icon: Icon, title, value, description, accent = 'text-white' }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 min-w-0">
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/45">
+        <Icon size={12} />
+        <span>{title}</span>
+      </div>
+      <p className={`mt-2 text-base font-semibold ${accent} break-words`}>{value}</p>
+      <p className="mt-1 text-sm text-white/60 leading-relaxed break-words">{description}</p>
+    </div>
+  );
+}
 
-export default function WeatherPulse({ current, hourly, animation }) {
-  if (!current || !hourly?.time?.length) return null;
+function scoreHour(hourly, index, aqiValue) {
+  const temp = hourly.temperature_2m[index] ?? 0;
+  const wind = hourly.wind_speed_10m?.[index] ?? 0;
+  const precip = hourly.precipitation_probability[index] ?? 0;
+  const code = hourly.weather_code[index] ?? 0;
 
-  const weatherInfo = getWeatherInfo(current.weather_code);
-  const tone = CONDITION_TIPS[animation] ?? CONDITION_TIPS.cloudy;
-  const AccentIcon = tone.icon;
+  let score = 100;
+  score -= Math.abs(temp - 24) * 3;
+  score -= wind * 1.8;
+  score -= precip * 1.6;
+  score -= aqiValue >= 100 ? 15 : 0;
+  score -= code >= 60 ? 15 : 0;
+  return score;
+}
 
-  const nextHours = hourly.time.slice(0, 6).map((time, index) => ({
-    time,
-    temp: hourly.temperature_2m[index],
-    precip: hourly.precipitation_probability[index] ?? 0,
-  }));
+export default function LifestyleInsights({ current, hourly, daily, aqi, cityName }) {
+  const { coords } = useStore();
 
-  const pulseVariants = {
-    sunny: { scale: [1, 1.02, 1], transition: { duration: 5.5, repeat: Infinity, ease: 'easeInOut' } },
-    cloudy: { x: [0, 3, 0], transition: { duration: 6.5, repeat: Infinity, ease: 'easeInOut' } },
-    rain: { y: [0, 2, 0], transition: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' } },
-    snow: { rotate: [0, 1.5, 0], transition: { duration: 4.5, repeat: Infinity, ease: 'easeInOut' } },
-    thunder: { scale: [1, 1.03, 1], transition: { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } },
-    fog: { opacity: [0.75, 1, 0.75], transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } },
-  };
+  const lifestyle = useMemo(() => {
+    if (!current || !hourly?.time?.length) return null;
+
+    const aqiValue = aqi?.european_aqi ?? aqi?.us_aqi ?? null;
+    const aqiInfo = getAqiInfo(aqiValue);
+    const currentTemp = current.temperature_2m ?? 0;
+    const feelsLike = current.apparent_temperature ?? currentTemp;
+    const windSpeed = current.wind_speed_10m ?? 0;
+    const rainNow = current.precipitation ?? 0;
+    const humidity = current.relative_humidity_2m ?? 0;
+    const isNight = current.is_day === 0;
+
+    const next12 = hourly.time.slice(0, 12).map((time, index) => ({ time, index }));
+    const workoutSlot = next12.reduce((best, item) => {
+      const score = scoreHour(hourly, item.index, aqiValue ?? 0);
+      return score > best.score ? { score, index: item.index } : best;
+    }, { score: -Infinity, index: 0 });
+
+    const travelSlot = next12.reduce((best, item) => {
+      const precip = hourly.precipitation_probability[item.index] ?? 0;
+      const wind = hourly.wind_speed_10m?.[item.index] ?? 0;
+      const temp = hourly.temperature_2m[item.index] ?? 0;
+      const score = 100 - precip * 2 - wind * 1.5 - Math.abs(temp - 23) * 2;
+      return score > best.score ? { score, index: item.index } : best;
+    }, { score: -Infinity, index: 0 });
+
+    const workoutTime = formatHour(hourly.time[workoutSlot.index]);
+    const travelTime = formatHour(hourly.time[travelSlot.index]);
+
+    const studyMode = (() => {
+      if (aqiValue !== null && aqiValue >= 100) return 'Indoor deep-work mode';
+      if (currentTemp >= 30 || feelsLike >= 35 || rainNow > 0) return 'Best for focused indoor blocks';
+      if (windSpeed >= 25) return 'Quiet indoor focus, keep tasks steady';
+      return 'Balanced focus mode with light breaks';
+    })();
+
+    const mood = (() => {
+      if (aqiValue !== null && aqiValue >= 150) return 'Keep things slow. The air needs you to stay inside more than usual.';
+      if (currentTemp >= 38 || feelsLike >= 40) return 'A hot day, so pace yourself and keep hydration within reach.';
+      if (rainNow > 0) return 'A softer day with rain in the mix. Good for calm, indoor momentum.';
+      if (aqiValue !== null && aqiValue <= 50 && currentTemp >= 20 && currentTemp <= 32) return 'Clean air and friendly temperatures make this a good day to move.';
+      return isNight ? 'Night is quiet and usable for slow planning or a reset.' : 'A balanced weather window for steady progress.';
+    })();
+
+    const workoutDescription = aqiValue !== null && aqiValue >= 100
+      ? 'Skip hard cardio outside. Use a gym, home workout, or later indoor session.'
+      : `Best around ${workoutTime} when the air feels steadier and temperatures are kinder.`;
+
+    const travelDescription = rainNow > 0 || (hourly.precipitation_probability[travelSlot.index] ?? 0) > 20
+      ? `Travel before ${travelTime} if possible. That window looks lighter.`
+      : `Travel looks easiest around ${travelTime}, when wind and heat stay more manageable.`;
+
+    const studyDescription = humidity > 75 && currentTemp > 24
+      ? 'Humidity may make you feel sluggish. Keep study sessions short and room temperatures steady.'
+      : 'Use this as your reliable indoor focus mode. It is a good day for coding, studying, or planning.';
+
+    return {
+      workoutTime,
+      travelTime,
+      studyMode,
+      mood,
+      workoutDescription,
+      travelDescription,
+      studyDescription,
+      isNight,
+      aqiLabel: aqiInfo.label,
+      cityLabel: cityName || (coords ? `${coords.lat.toFixed(2)}, ${coords.lon.toFixed(2)}` : 'your area'),
+    };
+  }, [current, hourly, daily, aqi, cityName, coords]);
+
+  if (!lifestyle) return null;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="glass rounded-3xl border border-white/10 p-5 relative overflow-hidden"
+      transition={{ duration: 0.35 }}
+      className="glass rounded-3xl p-5 lg:p-6 border border-white/10 relative overflow-hidden min-w-0"
     >
-      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tone.accent}`} />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-fuchsia-400 via-cyan-400 to-amber-300" />
 
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <p className="text-white/45 text-xs uppercase tracking-[0.28em]">Weather pulse</p>
-          <h3 className="text-white text-xl font-semibold mt-1">{tone.title}</h3>
-          <p className="text-white/65 text-sm mt-1">{weatherInfo.label}</p>
+          <p className="text-white/45 text-xs uppercase tracking-[0.24em]">Lifestyle Insights</p>
+          <h3 className="text-white text-lg font-semibold mt-1">Best windows for work, movement, and travel</h3>
+          <p className="text-white/60 text-sm mt-1">For {lifestyle.cityLabel}</p>
         </div>
-
-        <motion.div
-          animate={pulseVariants[animation] ?? pulseVariants.cloudy}
-          className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tone.accent} flex items-center justify-center text-white shadow-lg shadow-black/20`}
-        >
-          <AccentIcon size={20} />
-        </motion.div>
-      </div>
-
-      <p className="text-white/80 text-sm leading-relaxed mb-5">
-        {tone.tip}
-      </p>
-
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="rounded-2xl bg-white/5 border border-white/10 px-3 py-3">
-          <div className="flex items-center gap-2 text-white/50 text-[10px] uppercase tracking-[0.24em]">
-            <Wind size={11} /> Wind
-          </div>
-          <div className="text-white font-semibold mt-1">{Math.round(current.wind_speed_10m ?? 0)} km/h</div>
-        </div>
-        <div className="rounded-2xl bg-white/5 border border-white/10 px-3 py-3">
-          <div className="flex items-center gap-2 text-white/50 text-[10px] uppercase tracking-[0.24em]">
-            <AccentIcon size={11} /> Condition
-          </div>
-          <div className="text-white font-semibold mt-1">{weatherInfo.label}</div>
-        </div>
-        <div className="rounded-2xl bg-white/5 border border-white/10 px-3 py-3">
-          <div className="flex items-center gap-2 text-white/50 text-[10px] uppercase tracking-[0.24em]">
-            <AlertTriangle size={11} /> Alert
-          </div>
-          <div className="text-white font-semibold mt-1">{animation === 'thunder' ? 'Stay alert' : 'Normal'}</div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-right">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Mood</p>
+          <p className="text-sm text-white/90 mt-1 max-w-[11rem] leading-relaxed">{lifestyle.mood}</p>
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-white/50 text-xs uppercase tracking-widest font-medium">Next 6 hours</p>
-          <p className="text-white/45 text-xs">Quick glance</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <InsightCard
+          icon={Dumbbell}
+          title="Best workout time"
+          value={lifestyle.workoutTime}
+          description={lifestyle.workoutDescription}
+          accent="text-white"
+        />
+        <InsightCard
+          icon={PlaneTakeoff}
+          title="Best travel time"
+          value={lifestyle.travelTime}
+          description={lifestyle.travelDescription}
+          accent="text-white"
+        />
+        <InsightCard
+          icon={BookOpen}
+          title="Study mode"
+          value={lifestyle.studyMode}
+          description={lifestyle.studyDescription}
+          accent="text-white"
+        />
+        <InsightCard
+          icon={Sparkles}
+          title="Air + mood"
+          value={lifestyle.aqiLabel}
+          description={lifestyle.mood}
+          accent="text-white"
+        />
+      </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {nextHours.map(({ time, temp, precip }, index) => {
-            const isNow = index === 0;
-            return (
-              <motion.div
-                key={time}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`rounded-2xl border px-3 py-3 text-center ${isNow ? 'bg-white/15 border-white/20' : 'bg-white/5 border-white/10'}`}
-              >
-                <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">
-                  {isNow ? 'Now' : formatHour(time)}
-                </div>
-                <div className="mt-2 text-lg font-semibold text-white">{roundTemp(temp)}°</div>
-                <div className="mt-1 text-[10px] text-white/50">
-                  {precip > 10 ? `${precip}% rain` : 'Dry'}
-                </div>
-              </motion.div>
-            );
-          })}
+      <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-white/65">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 flex items-center gap-2">
+          <TimerReset size={13} className="text-cyan-300" />
+          <span>Good for timed focus blocks</span>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 flex items-center gap-2">
+          <MoonStar size={13} className="text-indigo-300" />
+          <span>{lifestyle.isNight ? 'Night reset mode' : 'Daytime momentum mode'}</span>
         </div>
       </div>
     </motion.div>

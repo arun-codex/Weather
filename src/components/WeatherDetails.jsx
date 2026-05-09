@@ -73,71 +73,95 @@ export default function WeatherDetails({ current, daily, aqi }) {
           label="Wind"
           value={`${Math.round(current.wind_speed_10m)} km/h`}
           sub={`${windDir} · ${windDesc}`}
-        />
+            <div className="glass rounded-3xl p-5 lg:p-6 border border-white/10 min-w-0">
+              <div className="flex items-end justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-xs text-white/50 uppercase tracking-[0.24em] font-medium">
+                    Environment Data
+                  </p>
+                  <p className="text-white/80 text-sm mt-1">Compact live readings</p>
+                </div>
+                <p className="text-xs text-white/45 uppercase tracking-[0.22em]">Air, light, comfort</p>
+              </div>
 
-        {/* UV Index */}
-        <Tile
-          icon={Sun}
-          label="UV Index"
-          value={Math.round(current.uv_index ?? 0)}
-          sub={uvInfo.label}
-          accent={uvInfo.color}
-        />
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Humidity */}
+                <Tile
+                  icon={Droplets}
+                  label="Humidity"
+                  value={`${current.relative_humidity_2m}%`}
+                  sub={current.relative_humidity_2m > 70 ? 'Feels muggy' : 'Comfortable'}
+                />
 
-        {/* Pressure */}
-        <Tile
-          icon={Gauge}
-          label="Pressure"
-          value={`${Math.round(current.surface_pressure ?? 0)}`}
-          sub="hPa"
-        />
+                {/* Wind */}
+                <Tile
+                  icon={Wind}
+                  label="Wind"
+                  value={`${Math.round(current.wind_speed_10m)} km/h`}
+                  sub={`${windDir} · ${windDesc}`}
+                />
 
-        {/* AQI */}
-        <Tile
-          icon={Activity}
-          label="Air Quality"
-          value={aqiValue !== null ? aqiValue : 'N/A'}
-          sub={aqiInfo.label}
-          accent={aqiInfo.color}
-        />
+                {/* UV Index */}
+                <Tile
+                  icon={Sun}
+                  label="UV Index"
+                  value={Math.round(current.uv_index ?? 0)}
+                  sub={uvInfo.label}
+                  accent={uvInfo.color}
+                />
 
-        {/* Precipitation */}
-        <Tile
-          icon={CloudRain}
-          label="Precipitation"
-          value={`${current.precipitation ?? 0} mm`}
-          sub="Past hour"
-        />
+                {/* AQI */}
+                <Tile
+                  icon={Activity}
+                  label="Air Quality"
+                  value={aqiValue !== null ? aqiValue : 'N/A'}
+                  sub={aqiInfo.label}
+                  accent={aqiInfo.color}
+                />
 
-        {/* Visibility */}
-        <Tile
-          icon={Eye}
-          label="Visibility"
-          value={visibility != null ? `${Math.round(visibility / 1000)} km` : '—'}
-          sub={
-            visibility == null ? null : (
-              visibility >= 10000 ? 'Clear view' :
-              visibility >= 5000 ? 'Moderate' : 'Low visibility'
-            )
-          }
-        />
+                {/* Pressure */}
+                <Tile
+                  icon={Gauge}
+                  label="Pressure"
+                  value={`${Math.round(current.surface_pressure ?? 0)}`}
+                  sub="hPa"
+                />
 
-        {/* Sunrise */}
-        <Tile
-          icon={Sunrise}
-          label="Sunrise"
-          value={fmtTime(sunrise)}
-          sub="Local time"
-        />
+                {/* Visibility */}
+                <Tile
+                  icon={Eye}
+                  label="Visibility"
+                  value={visibility != null ? `${Math.round(visibility / 1000)} km` : '—'}
+                  sub={
+                    visibility == null ? null : (
+                      visibility >= 10000 ? 'Clear view' :
+                      visibility >= 5000 ? 'Moderate' : 'Low visibility'
+                    )
+                  }
+                />
 
-        {/* Sunset */}
-        <Tile
-          icon={Sunset}
-          label="Sunset"
-          value={fmtTime(sunset)}
-          sub="Local time"
-        />
-      </div>
-    </div>
-  );
-}
+                {/* Precipitation */}
+                <Tile
+                  icon={CloudRain}
+                  label="Precipitation"
+                  value={`${current.precipitation ?? 0} mm`}
+                  sub="Past hour"
+                />
+
+                {/* Sunrise */}
+                <Tile
+                  icon={Sunrise}
+                  label="Sunrise"
+                  value={fmtTime(sunrise)}
+                  sub="Local time"
+                />
+
+                {/* Sunset */}
+                <Tile
+                  icon={Sunset}
+                  label="Sunset"
+                  value={fmtTime(sunset)}
+                  sub="Local time"
+                />
+              </div>
+            </div>
