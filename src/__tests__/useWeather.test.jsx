@@ -1,8 +1,10 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, act } from '@testing-library/react';
 import { useWeather } from '../../src/hooks/useWeather';
 import { useStore } from '../../src/store/useStore';
+
+const originalFetchData = useStore.getState().fetchData;
 
 function TestComponent({ coords }) {
   const { data, cityName, loading } = useWeather(coords);
@@ -18,14 +20,23 @@ function TestComponent({ coords }) {
 describe('useWeather hook', () => {
   beforeEach(() => {
     // reset store
-    useStore.setState({ coords: null, weatherData: null, aqiData: null, cityName: '', loading: false, error: null, lastRefresh: null });
+    act(() => {
+      useStore.setState({ coords: null, weatherData: null, aqiData: null, cityName: '', loading: false, error: null, lastRefresh: null });
+    });
   });
 
-  it('calls setCoords when coords prop changes and triggers fetchData', async () => {
+  afterEach(() => {
+    act(() => {
+      useStore.setState({ fetchData: originalFetchData });
+    });
+  });
+
+  it('triggers fetchData when coords prop changes', async () => {
     const mockFetch = vi.fn(async () => {});
-    const mockSetCoords = vi.fn();
     // replace functions on the store
-    useStore.setState({ fetchData: mockFetch, setCoords: mockSetCoords });
+    act(() => {
+      useStore.setState({ fetchData: mockFetch });
+    });
 
     const { rerender } = render(<TestComponent coords={null} />);
 
@@ -34,7 +45,6 @@ describe('useWeather hook', () => {
       rerender(<TestComponent coords={{ lat: 1.23, lon: 4.56 }} />);
     });
 
-    expect(mockSetCoords).toHaveBeenCalled();
     // fetchData will be invoked asynchronously; give microtask to run
     await act(async () => Promise.resolve());
     expect(mockFetch).toHaveBeenCalled();

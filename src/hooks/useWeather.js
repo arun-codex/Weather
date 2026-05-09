@@ -5,7 +5,7 @@
  * Auto-refreshes every 10 minutes.
  */
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 
 const REFRESH_INTERVAL = 10 * 60 * 1000;
@@ -19,17 +19,12 @@ export function useWeather(coords) {
   const error = useStore((s) => s.error);
   const lastRefresh = useStore((s) => s.lastRefresh);
   const fetchData = useStore((s) => s.fetchData);
-  const setCoords = useStore((s) => s.setCoords);
 
   const coordsRef = useRef(coords);
 
   useEffect(() => {
     coordsRef.current = coords;
-    if (coords) {
-      // When coords change we set them in the store; do not overwrite a manual cityName
-      setCoords({ lat: coords.lat, lon: coords.lon });
-    }
-  }, [coords, setCoords]);
+  }, [coords]);
 
   useEffect(() => {
     if (!coords) return;
@@ -37,10 +32,18 @@ export function useWeather(coords) {
 
     const interval = setInterval(() => {
       const { lat, lon } = coordsRef.current || {};
-      if (lat && lon) fetchData(lat, lon);
+      if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lon))) {
+        fetchData(lat, lon);
+      }
     }, REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
+  }, [coords, fetchData]);
+
+  const refresh = useCallback(() => {
+    if (coords) {
+      fetchData(coords.lat, coords.lon);
+    }
   }, [coords, fetchData]);
 
   return {
@@ -49,6 +52,6 @@ export function useWeather(coords) {
     loading,
     error,
     lastRefresh,
-    refresh: () => coords && fetchData(coords.lat, coords.lon),
+    refresh,
   };
 }

@@ -11,9 +11,17 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchCity } from '../api/weather';
+import {
+  getCityIdentityKey,
+  normalizeCityResult,
+  normalizeSearchQuery,
+  rankCityResults,
+} from '../utils/searchRanking';
 
 const RECENT_SEARCHES_KEY = 'weather.recentSearches';
 const MAX_RECENT = 5;
+const SEARCH_DEBOUNCE_MS = 300;
+const SLOW_SEARCH_MS = 500;
 
 // Safe localStorage wrapper
 const safeLocalStorage = {
@@ -47,111 +55,156 @@ const safeLocalStorage = {
   },
 };
 
+function loadRecentSearches() {
+  try {
+    const stored = safeLocalStorage.getItem(RECENT_SEARCHES_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((city, index) => normalizeCityResult(city, index))
+      .filter((city) => city.name && city.lat !== null && city.lon !== null)
+      .slice(0, MAX_RECENT);
+  } catch {
+    return [];
+  }
+}
+
+function isAbortError(error) {
+  return error?.name === 'AbortError' || error?.code === 'ERR_CANCELED' || error?.message === 'canceled';
+}
+
 export function useSearchAutocomplete() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
-  const [recentSearches, setRecentSearches] = useState([]);
+  const [recentSearches, setRecentSearches] = useState(loadRecentSearches);
   const [loading, setLoading] = useState(false);
+  const [showSlowLoading, setShowSlowLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
 
   // For debouncing and request cancellation
   const debounceTimer = useRef(null);
+  const slowSearchTimer = useRef(null);
   const abortController = useRef(null);
-  const lastQueryRef = useRef('');
+  const requestId = useRef(0);
+  const lastResolvedQuery = useRef('');
 
-  // Load recent searches from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = safeLocalStorage.getItem(RECENT_SEARCHES_KEY);
-      if (stored) {
-        setRecentSearches(JSON.parse(stored));
-      }
-    } catch {
-      // Ignore localStorage errors
+  const abortActiveSearch = useCallback(() => {
+    if (abortController.current) {
+      abortController.current.abort();
+      abortController.current = null;
+    }
+    if (slowSearchTimer.current) {
+      clearTimeout(slowSearchTimer.current);
+      slowSearchTimer.current = null;
     }
   }, []);
+
+  const resetSearchState = useCallback(() => {
+    abortActiveSearch();
+    requestId.current += 1;
+    lastResolvedQuery.current = '';
+    setResults([]);
+    setLoading(false);
+    setShowSlowLoading(false);
+    setError(null);
+    setHasSearched(false);
+  }, [abortActiveSearch]);
 
   // Debounced search function
   const performSearch = useCallback(async (searchQuery) => {
-    // Cancel previous request if still in flight
-    if (abortController.current) {
-      abortController.current.abort();
+    const normalizedQuery = normalizeSearchQuery(searchQuery);
+    if (!normalizedQuery) {
+      resetSearchState();
+      return;
     }
 
-    // Create new abort controller for this request
+    abortActiveSearch();
+    const activeRequestId = requestId.current + 1;
+    requestId.current = activeRequestId;
     abortController.current = new AbortController();
 
-    if (!searchQuery || searchQuery.length < 2) {
-      setResults([]);
-      setError(null);
-      setHasSearched(false);
-      return;
-    }
-
-    // Prevent duplicate requests
-    if (lastQueryRef.current === searchQuery) {
-      return;
-    }
-    lastQueryRef.current = searchQuery;
-
     setLoading(true);
+    setShowSlowLoading(false);
     setError(null);
-    setHasSearched(true);
+
+    slowSearchTimer.current = setTimeout(() => {
+      if (requestId.current === activeRequestId) {
+        setShowSlowLoading(true);
+      }
+    }, SLOW_SEARCH_MS);
 
     try {
-      const cities = await searchCity(searchQuery);
+      const cities = await searchCity(normalizedQuery, {
+        signal: abortController.current.signal,
+        count: 50,
+      });
 
-      // Check if this request was aborted (newer request came in)
-      if (abortController.current?.signal.aborted) {
+      if (requestId.current !== activeRequestId) {
         return;
       }
 
-      setResults(cities || []);
-      if (cities.length === 0) {
-        setError(`No cities found matching "${searchQuery}"`);
-      }
+      const ranked = rankCityResults(normalizedQuery, cities, recentSearches, 8);
+      lastResolvedQuery.current = normalizedQuery;
+      setResults(ranked);
+      setHasSearched(true);
+      setError(null);
     } catch (err) {
-      if (err.name === 'AbortError') {
-        // Request was cancelled, ignore
+      if (isAbortError(err) || requestId.current !== activeRequestId) {
         return;
       }
-      setError('Failed to search cities. Please try again.');
+      setError('Search unavailable.\nCheck connection.');
       setResults([]);
+      setHasSearched(true);
     } finally {
-      setLoading(false);
+      if (requestId.current === activeRequestId) {
+        if (slowSearchTimer.current) {
+          clearTimeout(slowSearchTimer.current);
+          slowSearchTimer.current = null;
+        }
+        setLoading(false);
+        setShowSlowLoading(false);
+      }
     }
-  }, []);
+  }, [abortActiveSearch, recentSearches, resetSearchState]);
 
   // Handle query change with debouncing
   const handleQueryChange = useCallback(
     (value) => {
-      setQuery(value);
+      const nextQuery = String(value ?? '').slice(0, 80);
+      const normalizedQuery = normalizeSearchQuery(nextQuery);
+      setQuery(nextQuery);
 
-      // Clear previous timer
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
       }
 
-      // Set new debounced search
+      if (!normalizedQuery) {
+        resetSearchState();
+        return;
+      }
+
+      if (normalizedQuery !== lastResolvedQuery.current) {
+        setResults([]);
+        setHasSearched(false);
+      }
+
       debounceTimer.current = setTimeout(() => {
-        performSearch(value);
-      }, 300);
+        performSearch(normalizedQuery);
+      }, SEARCH_DEBOUNCE_MS);
     },
-    [performSearch]
+    [performSearch, resetSearchState]
   );
 
   // Add city to recent searches
   const addToRecent = useCallback((city) => {
     try {
       setRecentSearches((prev) => {
-        // Remove if already exists, then add to top
-        const filtered = prev.filter(
-          (c) =>
-            c.name.toLowerCase() !== city.name.toLowerCase() ||
-            c.country !== city.country
-        );
-        const updated = [city, ...filtered].slice(0, MAX_RECENT);
+        const normalizedCity = normalizeCityResult(city);
+        const cityKey = getCityIdentityKey(normalizedCity);
+        const filtered = prev.filter((recent) => getCityIdentityKey(recent) !== cityKey);
+        const updated = [normalizedCity, ...filtered].slice(0, MAX_RECENT);
         safeLocalStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
         return updated;
       });
@@ -173,11 +226,8 @@ export function useSearchAutocomplete() {
   // Clear all search state
   const clearSearch = useCallback(() => {
     setQuery('');
-    setResults([]);
-    setError(null);
-    setHasSearched(false);
-    lastQueryRef.current = '';
-  }, []);
+    resetSearchState();
+  }, [resetSearchState]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -185,19 +235,19 @@ export function useSearchAutocomplete() {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
       }
-      if (abortController.current) {
-        abortController.current.abort();
-      }
+      abortActiveSearch();
     };
-  }, []);
+  }, [abortActiveSearch]);
 
   return {
     query,
     results,
     recentSearches,
     loading,
+    showSlowLoading,
     error,
     hasSearched,
+    searchReady: Boolean(normalizeSearchQuery(query)),
     handleQueryChange,
     addToRecent,
     clearRecent,

@@ -42,7 +42,7 @@ function scoreHour(hourly, index, aqiValue) {
   return score;
 }
 
-export default function LifestyleInsights({ current, hourly, daily, aqi, cityName }) {
+export default function LifestyleInsights({ current, hourly, aqi, cityName }) {
   const { coords } = useStore();
 
   const lifestyle = useMemo(() => {
@@ -113,7 +113,7 @@ export default function LifestyleInsights({ current, hourly, daily, aqi, cityNam
       aqiLabel: aqiInfo.label,
       cityLabel: cityName || (coords ? `${coords.lat.toFixed(2)}, ${coords.lon.toFixed(2)}` : 'your area'),
     };
-  }, [current, hourly, daily, aqi, cityName, coords]);
+  }, [current, hourly, aqi, cityName, coords]);
 
   if (!lifestyle) return null;
 

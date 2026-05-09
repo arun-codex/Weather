@@ -1,22 +1,27 @@
 /**
- * SearchBar.jsx (Enhanced with Autocomplete)
- * -------------------------------------------
- * Production-ready search component with:
- * - Real-time autocomplete suggestions
- * - Recent searches (localStorage persistence)
- * - Debounced API calls (300ms)
- * - Request cancellation (AbortController)
- * - Loading & error states
- * - Full keyboard navigation
- * - Mobile-optimized UI
- * - Atomic state updates
+ * SearchBar.jsx
+ * -------------
+ * Autocomplete search with ranked city results, recents, keyboard support,
+ * pointer-safe mobile dropdown behavior, and ARIA combobox semantics.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { Search, MapPin, X, Loader2, Clock, Trash2 } from 'lucide-react';
 import { useSearchAutocomplete } from '../hooks/useSearchAutocomplete';
+import { formatCitySubtitle } from '../utils/searchRanking';
+
+const DROPDOWN_GAP = 12;
+const MOBILE_EDGE_GAP = 8;
+const DEFAULT_DROPDOWN_STYLE = {
+  position: 'fixed',
+  left: `${MOBILE_EDGE_GAP}px`,
+  right: `${MOBILE_EDGE_GAP}px`,
+  top: '72px',
+  maxHeight: '60vh',
+  zIndex: 9999,
+};
 
 export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
   const {
@@ -24,55 +29,141 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
     results,
     recentSearches,
     loading,
+    showSlowLoading,
     error,
     hasSearched,
+    searchReady,
     handleQueryChange,
     addToRecent,
     clearRecent,
     clearSearch,
   } = useSearchAutocomplete();
 
+  const reactId = useId();
+  const listboxId = `${reactId}-search-dropdown`;
+  const statusId = `${reactId}-search-status`;
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
   const dropdownRef = useRef(null);
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [isMobile, setIsMobile] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState(DEFAULT_DROPDOWN_STYLE);
 
-  // Keyboard navigation
-  const handleKeyDown = (e) => {
-    const itemsToShow = results.length > 0 ? results : recentSearches;
+  const showSearchResults = focused && searchReady && results.length > 0;
+  const showRecentSearches = focused && !searchReady && query.trim().length === 0 && recentSearches.length > 0;
+  const showLoadingState = focused && searchReady && showSlowLoading;
+  const showErrorState = focused && searchReady && hasSearched && !loading && Boolean(error);
+  const showNoResultsState =
+    focused && searchReady && hasSearched && !loading && results.length === 0 && !error;
+  const shouldShowDropdown =
+    showSearchResults || showRecentSearches || showLoadingState || showErrorState || showNoResultsState;
 
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, itemsToShow.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIndex((i) => Math.max(i - 1, -1));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (activeIndex >= 0 && itemsToShow[activeIndex]) {
-        handleSelectCity(itemsToShow[activeIndex]);
-      }
-    } else if (e.key === 'Escape') {
-      setFocused(false);
+  const itemsToShow = showSearchResults ? results : showRecentSearches ? recentSearches : [];
+  const activeOptionId =
+    activeIndex >= 0 && activeIndex < itemsToShow.length ? `${listboxId}-option-${activeIndex}` : undefined;
+
+  const statusMessage = useMemo(() => {
+    if (showLoadingState) return 'Searching cities...';
+    if (showErrorState) return 'Search unavailable. Check connection.';
+    if (showNoResultsState) return 'No cities found.';
+    if (showSearchResults) return `${results.length} cities available.`;
+    if (showRecentSearches) return `${recentSearches.length} recent searches available.`;
+    return '';
+  }, [
+    recentSearches.length,
+    results.length,
+    showErrorState,
+    showLoadingState,
+    showNoResultsState,
+    showRecentSearches,
+    showSearchResults,
+  ]);
+
+  const updateDropdownPosition = useCallback(() => {
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const viewport = window.visualViewport;
+    const viewportWidth = viewport?.width ?? window.innerWidth;
+    const viewportHeight = viewport?.height ?? window.innerHeight;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const isMobile = viewportWidth <= 640;
+    const top = rect.bottom + DROPDOWN_GAP;
+    const availableHeight = Math.max(180, viewportTop + viewportHeight - top - MOBILE_EDGE_GAP);
+
+    if (isMobile) {
+      setDropdownStyle({
+        position: 'fixed',
+        left: `${MOBILE_EDGE_GAP}px`,
+        right: `${MOBILE_EDGE_GAP}px`,
+        top: `${top}px`,
+        maxHeight: `${Math.min(availableHeight, viewportHeight * 0.62)}px`,
+        zIndex: 9999,
+      });
+      return;
     }
-  };
 
-  // Handle city selection with atomic updates
-  const handleSelectCity = (city) => {
-    // Add to recent searches
-    addToRecent(city);
+    setDropdownStyle({
+      position: 'fixed',
+      left: `${rect.left}px`,
+      top: `${top}px`,
+      width: `${rect.width}px`,
+      maxHeight: `${Math.min(384, availableHeight)}px`,
+      zIndex: 9999,
+    });
+  }, []);
 
-    // Clear local state
-    clearSearch();
-    setActiveIndex(-1);
-    setFocused(false);
-    inputRef.current?.blur();
+  useEffect(() => {
+    if (!shouldShowDropdown) return undefined;
 
-    // Trigger parent callback (atomic store update)
-    onSelectCity(city);
-  };
+    let frame = window.requestAnimationFrame(updateDropdownPosition);
+    const updateOnFrame = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(updateDropdownPosition);
+    };
+
+    window.addEventListener('resize', updateOnFrame);
+    window.addEventListener('scroll', updateOnFrame, true);
+    window.visualViewport?.addEventListener('resize', updateOnFrame);
+    window.visualViewport?.addEventListener('scroll', updateOnFrame);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', updateOnFrame);
+      window.removeEventListener('scroll', updateOnFrame, true);
+      window.visualViewport?.removeEventListener('resize', updateOnFrame);
+      window.visualViewport?.removeEventListener('scroll', updateOnFrame);
+    };
+  }, [shouldShowDropdown, updateDropdownPosition]);
+
+  useEffect(() => {
+    if (!focused) return undefined;
+
+    const handlePointerDown = (event) => {
+      const target = event.target;
+      const insideWrapper = wrapperRef.current?.contains(target);
+      const insideDropdown = dropdownRef.current?.contains(target);
+      if (!insideWrapper && !insideDropdown) {
+        setFocused(false);
+        setActiveIndex(-1);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [focused]);
+
+  const selectCity = useCallback(
+    (city) => {
+      addToRecent(city);
+      clearSearch();
+      setActiveIndex(-1);
+      setFocused(false);
+      inputRef.current?.blur();
+      onSelectCity(city);
+    },
+    [addToRecent, clearSearch, onSelectCity]
+  );
 
   const handleClear = () => {
     clearSearch();
@@ -80,82 +171,87 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
     inputRef.current?.focus();
   };
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      // If click is neither inside the input wrapper nor inside the portal dropdown, close
-      const target = e.target;
-      const clickedInsideWrapper = wrapperRef.current?.contains(target);
-      const clickedInsideDropdown = dropdownRef.current?.contains?.(target);
-      if (!clickedInsideWrapper && !clickedInsideDropdown) {
-        setFocused(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  // Reset active index when results change
-  useEffect(() => {
+  const handleInputChange = (event) => {
     setActiveIndex(-1);
-  }, [results.length, recentSearches.length]);
+    handleQueryChange(event.target.value);
+  };
 
-  // Mobile detection
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 640);
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+  const handleKeyDown = (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setFocused(true);
+      setActiveIndex((index) => Math.min(index + 1, itemsToShow.length - 1));
+      return;
+    }
 
-  // Determine what to show in dropdown
-  const showSearchResults = focused && query.length >= 2 && results.length > 0;
-  const showRecentSearches = focused && query.length === 0 && recentSearches.length > 0;
-  const showLoadingState = focused && query.length >= 2 && loading;
-  const showErrorState = focused && query.length >= 2 && hasSearched && !loading && error;
-  const showNoResultsState = focused && query.length >= 2 && hasSearched && !loading && results.length === 0 && !error;
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveIndex((index) => Math.max(index - 1, -1));
+      return;
+    }
 
-  // Render result/recent item
-  const ResultItem = ({ item, index, isActive, isRecent }) => (
-    <motion.button
-      type="button"
-      whileHover={{ x: 4 }}
-      role="option"
-      aria-selected={isActive}
-      tabIndex={-1}
-      id={`search-item-${index}`}
-      onMouseDown={() => handleSelectCity(item)}
-      onMouseEnter={() => setActiveIndex(index)}
-      className={`w-full text-left px-4 sm:px-5 py-3 sm:py-4 flex items-start gap-3 transition-all border-b border-white/5 last:border-0 ${
-        isActive ? 'bg-white/15' : 'hover:bg-white/10'
-      }`}
-    >
-      <div className="flex-shrink-0 mt-0.5">
-        {isRecent ? (
-          <Clock size={16} className="text-white/40" />
-        ) : (
-          <MapPin size={16} className="text-white/40" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm sm:text-base font-medium text-white">{item.name}</p>
-        <p className="text-xs sm:text-sm text-white/50 mt-0.5">
-          {[item.admin1, item.country].filter(Boolean).join(', ')}
-        </p>
-      </div>
-    </motion.button>
-  );
+    if (event.key === 'Enter') {
+      if (activeIndex >= 0 && itemsToShow[activeIndex]) {
+        event.preventDefault();
+        selectCity(itemsToShow[activeIndex]);
+      }
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      setFocused(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const ResultItem = ({ item, index, isActive, isRecent }) => {
+    const subtitle = formatCitySubtitle(item);
+    const optionId = `${listboxId}-option-${index}`;
+    const countryCode = item.country_code || '';
+    const label = [item.name, subtitle, countryCode].filter(Boolean).join(', ');
+
+    return (
+      <motion.button
+        type="button"
+        whileHover={{ x: 4 }}
+        role="option"
+        aria-selected={isActive}
+        aria-label={label}
+        tabIndex={-1}
+        id={optionId}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          selectCity(item);
+        }}
+        onMouseEnter={() => setActiveIndex(index)}
+        className={`w-full min-h-[52px] text-left px-4 sm:px-5 py-3.5 flex items-start gap-3 transition-all border-b border-white/5 last:border-0 ${
+          isActive ? 'bg-white/15' : 'hover:bg-white/10'
+        }`}
+      >
+        <div className="flex-shrink-0 mt-0.5">
+          {isRecent ? (
+            <Clock size={16} className="text-white/40" />
+          ) : (
+            <MapPin size={16} className="text-white/40" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm sm:text-base font-medium text-white">{item.name}</p>
+            {countryCode ? (
+              <span className="flex-shrink-0 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal text-white/55">
+                {countryCode}
+              </span>
+            ) : null}
+          </div>
+          {subtitle ? <p className="mt-0.5 truncate text-xs sm:text-sm text-white/50">{subtitle}</p> : null}
+        </div>
+      </motion.button>
+    );
+  };
 
   return (
-    <div
-      ref={wrapperRef}
-      className="w-full max-w-2xl mx-auto relative"
-      role="combobox"
-      aria-haspopup="listbox"
-      aria-owns="search-dropdown"
-      aria-expanded={focused && (results.length > 0 || recentSearches.length > 0)}
-    >
-      {/* Input row */}
+    <div ref={wrapperRef} className="w-full max-w-2xl mx-auto relative">
       <div className="flex gap-2 items-center">
         <div className="relative flex-1">
           <Search
@@ -172,13 +268,18 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
             spellCheck={false}
             inputMode="search"
             value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onFocus={() => setFocused(true)}
+            role="combobox"
+            aria-label="Search city"
+            aria-haspopup="listbox"
+            aria-expanded={shouldShowDropdown}
             aria-autocomplete="list"
-            aria-controls={focused ? 'search-dropdown' : undefined}
-            aria-activedescendant={activeIndex >= 0 ? `search-item-${activeIndex}` : undefined}
-            placeholder={currentCity || 'Search city…'}
+            aria-controls={shouldShowDropdown ? listboxId : undefined}
+            aria-activedescendant={activeOptionId}
+            aria-describedby={statusId}
+            placeholder={currentCity || 'Search city...'}
             className="
               w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-3.5 rounded-full text-sm sm:text-base text-white
               glass placeholder-white/40 outline-none border border-white/10
@@ -187,7 +288,6 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
             "
           />
 
-          {/* Loading / Clear indicator */}
           {(query.length > 0 || loading) && (
             <motion.button
               type="button"
@@ -195,24 +295,20 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
               whileTap={{ scale: 0.95 }}
               onClick={handleClear}
               className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors flex-shrink-0"
-              aria-label={loading ? 'Searching...' : 'Clear search'}
+              aria-label={loading ? 'Cancel search' : 'Clear search'}
             >
-              {loading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <X size={18} />
-              )}
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
             </motion.button>
           )}
         </div>
 
-        {/* GPS button */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.9 }}
           onClick={onGpsClick}
           title="Use my location"
+          aria-label="Use my location"
           className="
             p-2.5 sm:p-3 rounded-full glass text-white/70 hover:text-white border border-white/10
             hover:bg-white/15 hover:border-white/20 transition-all flex-shrink-0
@@ -222,61 +318,36 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
         </motion.button>
       </div>
 
-      {/* Dropdown: Search Results / Recent / Loading / Error / Empty */}
-      <AnimatePresence>
-        {focused && (showSearchResults || showRecentSearches || showLoadingState || showErrorState || showNoResultsState) && (
-          (() => {
-            const rect = wrapperRef.current?.getBoundingClientRect();
-            const baseStyle = rect
-              ? {
-                  position: 'fixed',
-                  left: rect.left + 'px',
-                  top: (rect.bottom + 12) + 'px',
-                  width: rect.width + 'px',
-                  zIndex: 9999,
-                }
-              : { position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50 };
+      <div id={statusId} className="sr-only" aria-live="polite">
+        {statusMessage}
+      </div>
 
-            const mobileStyle = isMobile
-              ? {
-                  position: 'fixed',
-                  left: 8 + 'px',
-                  right: 8 + 'px',
-                  top: (rect?.bottom ?? 0) + 12 + 'px',
-                  zIndex: 9999,
-                  maxHeight: '60vh',
-                }
-              : baseStyle;
-
-              return createPortal(
-                <motion.div
-                  ref={dropdownRef}
-                  id="search-dropdown"
+      {shouldShowDropdown
+        ? createPortal(
+            <motion.div
+                ref={dropdownRef}
+                id={listboxId}
                 initial={{ opacity: 0, y: -8, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.97 }}
                 transition={{ duration: 0.15 }}
-                style={mobileStyle}
-                  className="glass rounded-2xl overflow-hidden shadow-glass border border-white/10 max-h-96 overflow-y-auto"
+                style={dropdownStyle}
+                className="glass rounded-2xl overflow-hidden shadow-glass border border-white/10 overflow-y-auto overscroll-contain touch-pan-y"
                 role="listbox"
               >
-                {/* Search Results */}
-                {showSearchResults && (
-                  <>
-                    {results.map((city, i) => (
+                {showSearchResults
+                  ? results.map((city, index) => (
                       <ResultItem
-                        key={`result-${city.id ?? i}`}
+                        key={`result-${city.id ?? index}`}
                         item={city}
-                        index={i}
-                        isActive={activeIndex === i}
+                        index={index}
+                        isActive={activeIndex === index}
                         isRecent={false}
                       />
-                    ))}
-                  </>
-                )}
+                    ))
+                  : null}
 
-                {/* Recent Searches */}
-                {showRecentSearches && (
+                {showRecentSearches ? (
                   <>
                     <div className="sticky top-0 px-4 sm:px-5 py-3 bg-white/5 border-b border-white/10 flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -286,26 +357,26 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
                       <button
                         type="button"
                         onClick={clearRecent}
+                        aria-label="Clear recent searches"
                         className="text-xs text-white/40 hover:text-white/70 transition-colors flex items-center gap-1"
                       >
                         <Trash2 size={12} />
                         Clear
                       </button>
                     </div>
-                    {recentSearches.map((city, i) => (
+                    {recentSearches.map((city, index) => (
                       <ResultItem
-                        key={`recent-${city.id ?? i}`}
+                        key={`recent-${city.id ?? index}`}
                         item={city}
-                        index={i}
-                        isActive={activeIndex === i}
+                        index={index}
+                        isActive={activeIndex === index}
                         isRecent={true}
                       />
                     ))}
                   </>
-                )}
+                ) : null}
 
-                {/* Loading State */}
-                {showLoadingState && (
+                {showLoadingState ? (
                   <div className="px-4 sm:px-5 py-8 flex flex-col items-center justify-center gap-3">
                     <motion.div
                       animate={{ rotate: 360 }}
@@ -313,14 +384,14 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
                     >
                       <Loader2 size={24} className="text-white/50" />
                     </motion.div>
-                    <p className="text-sm text-white/50">Searching cities…</p>
+                    <p className="text-sm text-white/50">Searching cities...</p>
                   </div>
-                )}
+                ) : null}
 
-                {/* Error State */}
-                {showErrorState && (
+                {showErrorState ? (
                   <div className="px-4 sm:px-5 py-6 text-center">
-                    <p className="text-sm text-white/50 mb-3">{error}</p>
+                    <p className="text-sm text-white/60 font-medium">Search unavailable.</p>
+                    <p className="text-xs text-white/45 mt-1 mb-4">Check connection.</p>
                     <button
                       type="button"
                       onClick={handleClear}
@@ -329,21 +400,18 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
                       Try a different search
                     </button>
                   </div>
-                )}
+                ) : null}
 
-                {/* No Results State */}
-                {showNoResultsState && (
+                {showNoResultsState ? (
                   <div className="px-4 sm:px-5 py-6 text-center">
                     <p className="text-sm text-white/60 font-medium mb-1">No cities found</p>
                     <p className="text-xs text-white/40">Try searching for a different city name</p>
                   </div>
-                )}
-              </motion.div>,
-              document.body
-            );
-          })()
-        )}
-      </AnimatePresence>
+                ) : null}
+            </motion.div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

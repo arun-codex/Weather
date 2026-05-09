@@ -65,7 +65,8 @@ export function useGeolocation() {
   }, []);
 
   useEffect(() => {
-    requestPosition();
+    const id = setTimeout(requestPosition, 0);
+    return () => clearTimeout(id);
   }, [requestPosition]);
 
   return { coords, loading, error, retry: requestPosition };

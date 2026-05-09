@@ -8,10 +8,30 @@
  */
 
 import axios from 'axios';
+import { foldSearchText, normalizeCityResult, normalizeSearchQuery } from '../utils/searchRanking';
 
 const WEATHER_BASE = 'https://api.open-meteo.com/v1';
 const GEO_BASE     = 'https://geocoding-api.open-meteo.com/v1';
 const AQI_BASE     = 'https://air-quality-api.open-meteo.com/v1';
+const SEARCH_CACHE_TTL = 5 * 60 * 1000;
+
+const searchCache = new Map();
+const inFlightSearches = new Map();
+
+export function clearSearchCache() {
+  searchCache.clear();
+  inFlightSearches.clear();
+}
+
+function getSearchCacheKey(query, count, language) {
+  return `${foldSearchText(query)}|${count}|${language}`;
+}
+
+function normalizeCount(count) {
+  const parsed = Number(count);
+  if (!Number.isFinite(parsed)) return 50;
+  return Math.min(100, Math.max(1, Math.trunc(parsed)));
+}
 
 /**
  * Fetch full weather data for a lat/lon coordinate.
@@ -87,27 +107,50 @@ export async function fetchAQI(lat, lon) {
  * Search cities by name using Open-Meteo Geocoding API.
  * Returns an array of city result objects.
  */
-export async function searchCity(query) {
-  if (!query || query.length < 2) return [];
-  // Use q param (per Open-Meteo docs). Return up to 8 results in English.
-  const { data } = await axios.get(`${GEO_BASE}/search`, {
-    params: { q: query, count: 8, language: 'en', format: 'json' },
-  });
+export async function searchCity(query, { signal, count = 50, language = 'en' } = {}) {
+  const normalizedQuery = normalizeSearchQuery(query);
+  if (!normalizedQuery) return [];
 
-  const raw = data.results ?? [];
-  // Normalize results to a consistent shape used across the app
-  const results = raw.map((r, idx) => ({
-    id: r.id ?? `${r.name}-${r.latitude}-${r.longitude}-${idx}`,
-    name: r.name ?? '',
-    admin1: r.admin1 ?? r.admin2 ?? '',
-    country: r.country ?? '',
-    country_code: r.country_code ?? r.countryCode ?? '',
-    lat: r.latitude ?? r.lat ?? null,
-    lon: r.longitude ?? r.lon ?? null,
-    raw: r,
-  }));
+  const normalizedCount = normalizeCount(count);
+  const cacheKey = getSearchCacheKey(normalizedQuery, normalizedCount, language);
+  const cached = searchCache.get(cacheKey);
+  const now = Date.now();
 
-  return results;
+  if (cached && cached.expiresAt > now) {
+    return cached.results;
+  }
+
+  if (cached) {
+    searchCache.delete(cacheKey);
+  }
+
+  if (inFlightSearches.has(cacheKey)) {
+    return inFlightSearches.get(cacheKey);
+  }
+
+  const request = axios
+    .get(`${GEO_BASE}/search`, {
+      params: { name: normalizedQuery, count: normalizedCount, language, format: 'json' },
+      signal,
+    })
+    .then(({ data }) => {
+      const results = (data.results ?? []).map((result, index) => normalizeCityResult(result, index));
+      searchCache.set(cacheKey, {
+        results,
+        expiresAt: Date.now() + SEARCH_CACHE_TTL,
+      });
+      return results;
+    })
+    .catch((error) => {
+      searchCache.delete(cacheKey);
+      throw error;
+    })
+    .finally(() => {
+      inFlightSearches.delete(cacheKey);
+    });
+
+  inFlightSearches.set(cacheKey, request);
+  return request;
 }
 
 /**

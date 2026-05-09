@@ -52,12 +52,12 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
     thunder: { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 18px 60px rgba(129, 140, 248, 0.18)' },
     fog: { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 18px 60px rgba(203, 213, 225, 0.10)' },
   };
-  const cardStyle = cardVariants[info.animation] ?? cardVariants.cloudy;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
+      style={cardVariants[info.animation] ?? cardVariants.cloudy}
       transition={{ duration: 0.6, ease: 'easeOut' }}
       className="relative rounded-[2.5rem] overflow-hidden"
     >
