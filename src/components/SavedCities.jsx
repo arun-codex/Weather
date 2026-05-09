@@ -99,64 +99,82 @@ export default function SavedCities({ currentCity, currentCoords, onCitySelect }
   };
 
   return (
-       <div className="w-full glass rounded-3xl p-6 hidden md:block animate-in slide-in-from-left-8 duration-700" role="region" aria-label="Saved Cities">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="opacity-80 text-sm font-medium uppercase tracking-wider">
-          Saved Cities
-        </h2>
+    <div className="glass rounded-3xl p-4 sm:p-6 border border-white/10" role="region" aria-label="Saved Cities">
+      <div className="flex items-center justify-between mb-4 px-2">
+        <div>
+          <p className="text-xs text-white/50 uppercase tracking-[0.24em] font-medium">Quick Access</p>
+          <h3 className="text-white text-h4 font-semibold mt-1">Saved Cities</h3>
+        </div>
         <button
           type="button"
           onClick={addCurrentCity}
           disabled={!currentCityEntry || currentIsSaved}
           title={currentIsSaved ? 'Current city is saved' : 'Save current city'}
-          className="p-1 rounded-full transition-colors opacity-80 hover:opacity-100 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+          className="p-2 rounded-full transition-all opacity-70 hover:opacity-100 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
         >
-          <Plus size={16} />
+          <Plus size={18} />
         </button>
       </div>
 
-      <div className="space-y-3">
+      {/* Horizontal scrollable cities */}
+      <div className="flex gap-2 overflow-x-auto pb-2 px-2 -mx-2 scrollbar-hide">
+        {/* Current location card */}
         <motion.button
           type="button"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full text-left p-4 rounded-2xl bg-white/15 border border-white/20 shadow-sm flex items-center justify-between group"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="flex-shrink-0 p-4 rounded-2xl bg-white/15 border-2 border-white/40 shadow-sm flex flex-col items-center justify-center min-w-[120px] group transition-all hover:bg-white/20 hover:border-white/60"
         >
-          <div className="flex items-center gap-3 min-w-0">
-            <MapPin size={18} className="text-blue-200 flex-shrink-0" />
-            <span className="font-semibold text-white drop-shadow-sm truncate max-w-[150px]">
-              {currentCity || 'Current Location'}
-            </span>
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-blue-200 opacity-90 group-hover:opacity-100 transition-opacity">
-            Active
-          </span>
+          <MapPin size={20} className="text-blue-300 mb-2" />
+          <span className="text-xs font-semibold text-white text-center line-clamp-2">{currentCity || 'Current'}</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-blue-200 mt-1 opacity-70">Active</span>
         </motion.button>
 
-        {savedCities.map((city) => (
+        {/* Saved cities */}
+        {savedCities.map((city, idx) => (
           <motion.div
             key={city.id}
-            whileHover={{ scale: 1.02 }}
-            className="rounded-2xl glass-light hover:bg-white/10 transition-colors flex items-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: idx * 0.05 }}
+            className="flex-shrink-0 relative"
           >
-            <button
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => onCitySelect(toSelectableCity(city))}
-              className="min-w-0 flex-1 text-left p-4"
+              className="p-4 rounded-2xl glass-light border border-white/15 hover:bg-white/10 hover:border-white/25 transition-all flex flex-col items-center justify-center min-w-[120px] group"
             >
-              <span className="block font-medium text-white/90 truncate">{city.name}</span>
-              <span className="block text-xs text-white/45 mt-1">Tap to view forecast</span>
-            </button>
-            <button
+              <MapPin size={16} className="text-white/60 mb-2 group-hover:text-white/80" />
+              <span className="text-xs font-medium text-white/80 text-center line-clamp-2 group-hover:text-white">{city.name}</span>
+            </motion.button>
+            
+            {/* Delete button */}
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.1 }}
               onClick={() => removeCity(city.id)}
               title={`Remove ${city.name}`}
-              className="mr-3 p-2 rounded-full text-white/45 hover:text-white hover:bg-white/10 transition-colors"
+              className="absolute -top-2 -right-2 p-1.5 rounded-full bg-white/20 text-white/60 hover:bg-white/40 hover:text-white transition-all opacity-0 group-hover:opacity-100"
             >
-              <Trash2 size={15} />
-            </button>
+              <Trash2 size={12} />
+            </motion.button>
           </motion.div>
         ))}
+
+        {/* Add city prompt */}
+        {savedCities.length < 8 && (
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.05 }}
+            className="flex-shrink-0 p-4 rounded-2xl border-2 border-dashed border-white/30 hover:border-white/50 flex flex-col items-center justify-center min-w-[120px] text-white/50 hover:text-white/80 transition-all"
+            onClick={() => alert('Search for a city to add it to your saved list')}
+          >
+            <Plus size={20} />
+            <span className="text-xs font-medium mt-2">Add City</span>
+          </motion.button>
+        )}
       </div>
     </div>
   );

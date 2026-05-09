@@ -109,7 +109,7 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
   return (
     <div
       ref={wrapperRef}
-      className="search-wrapper relative w-full max-w-sm mx-auto"
+      className="w-full max-w-2xl mx-auto search-wrapper relative"
       role="combobox"
       aria-haspopup="listbox"
       aria-owns="search-results"
@@ -119,8 +119,8 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
       <div className="flex gap-2 items-center">
         <div className="relative flex-1">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none"
-            size={16}
+            className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none flex-shrink-0"
+            size={18}
           />
           <input
             ref={inputRef}
@@ -134,20 +134,21 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
             aria-activedescendant={activeIndex >= 0 ? `search-item-${activeIndex}` : undefined}
             placeholder={currentCity || 'Search city…'}
             className="
-              w-full pl-9 pr-9 py-2.5 rounded-2xl text-sm text-white
-              glass placeholder-white/40 outline-none
-              focus:ring-2 focus:ring-white/30 transition-all
+              w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-3.5 rounded-full text-sm sm:text-base text-white
+              glass placeholder-white/40 outline-none border border-white/10
+              focus:ring-2 focus:ring-white/40 focus:border-white/20 transition-all
+              focus:bg-white/12
             "
           />
           {/* Clear / loading indicator */}
           {query.length > 0 && (
             <button
               onClick={handleClear}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+              className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors flex-shrink-0"
             >
               {searching
-                ? <Loader2 size={14} className="animate-spin" />
-                : <X size={14} />
+                ? <Loader2 size={18} className="animate-spin" />
+                : <X size={18} />
               }
             </button>
           )}
@@ -159,11 +160,11 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
           onClick={onGpsClick}
           title="Use my location"
           className="
-            p-2.5 rounded-2xl glass text-white/70 hover:text-white
-            hover:bg-white/15 transition-all
+            p-2.5 sm:p-3 rounded-full glass text-white/70 hover:text-white border border-white/10
+            hover:bg-white/15 hover:border-white/20 transition-all flex-shrink-0
           "
         >
-          <MapPin size={18} />
+          <MapPin size={20} />
         </motion.button>
       </div>
 
@@ -172,26 +173,26 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
         {focused && results.length > 0 && (() => {
           const rect = wrapperRef.current?.getBoundingClientRect();
           const baseStyle = rect
-            ? { position: 'fixed', left: rect.left + 'px', top: (rect.bottom + 8) + 'px', width: rect.width + 'px', zIndex: 9999 }
+            ? { position: 'fixed', left: rect.left + 'px', top: (rect.bottom + 12) + 'px', width: rect.width + 'px', zIndex: 9999 }
             : { position: 'absolute', top: '100%', left: 0, right: 0 };
 
           const mobileStyle = isMobile
-            ? { position: 'fixed', left: 8 + 'px', right: 8 + 'px', top: (rect?.bottom ?? 0) + 8 + 'px', zIndex: 9999 }
+            ? { position: 'fixed', left: 8 + 'px', right: 8 + 'px', top: (rect?.bottom ?? 0) + 12 + 'px', zIndex: 9999 }
             : baseStyle;
 
-          const itemBaseClasses = 'w-full text-left px-4 py-3 flex items-center gap-3 text-white transition-colors border-b border-white/5 last:border-0';
-          const itemActive = 'bg-white/12';
+          const itemBaseClasses = 'w-full text-left px-4 sm:px-5 py-3 sm:py-4 flex items-start gap-3 text-white transition-colors border-b border-white/5 last:border-0';
+          const itemActive = 'bg-white/15';
           const itemHover = 'hover:bg-white/10';
 
           return createPortal(
             <motion.div
               id="search-results"
               initial={{ opacity: 0, y: -8, scale: 0.97 }}
-              animate={{ opacity: 1, y:  4, scale: 1 }}
+              animate={{ opacity: 1, y:  0, scale: 1 }}
               exit={{    opacity: 0, y: -8, scale: 0.97 }}
               transition={{ duration: 0.15 }}
               style={isMobile ? mobileStyle : baseStyle}
-              className={`glass rounded-2xl overflow-hidden shadow-2xl ${isMobile ? 'text-base' : 'text-sm'}`}
+              className={`glass rounded-2xl overflow-hidden shadow-glass border border-white/10 max-h-96 overflow-y-auto`}
               role="listbox"
             >
               {results.map((city, i) => (
@@ -203,12 +204,12 @@ export default function SearchBar({ onSelectCity, onGpsClick, currentCity }) {
                   key={`${city.id ?? i}`}
                   onMouseDown={() => handleSelect(city)}
                   onMouseEnter={() => setActiveIndex(i)}
-                  className={`${itemBaseClasses} ${i === activeIndex ? itemActive : itemHover} ${isMobile ? 'px-5 py-4' : ''}`}
+                  className={`${itemBaseClasses} ${i === activeIndex ? itemActive : itemHover}`}
                 >
-                  <MapPin size={16} className="text-white/40 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium">{city.name}</p>
-                    <p className="text-xs text-white/50">{[city.admin1, city.country].filter(Boolean).join(', ')}</p>
+                  <MapPin size={16} className="text-white/40 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm sm:text-base font-medium text-white">{city.name}</p>
+                    <p className="text-xs sm:text-sm text-white/50 mt-0.5">{[city.admin1, city.country].filter(Boolean).join(', ')}</p>
                   </div>
                 </button>
               ))}

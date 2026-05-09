@@ -12,6 +12,7 @@
  *   - Visibility (fallback — not always in API)
  */
 
+import { motion } from 'framer-motion';
 import {
   Droplets, Wind, Sun, Gauge, Activity, Eye,
   CloudRain, Sunrise, Sunset
@@ -20,14 +21,17 @@ import { describeWind, degToCompass, getAqiInfo, getUvInfo } from '../utils/form
 
 function Tile({ icon: Icon, label, value, sub, accent }) {
   return (
-    <div className="glass rounded-2xl p-4 space-y-2 min-w-0">
-      <div className="flex items-center gap-1.5">
-        <Icon size={14} className="text-white/50" />
-        <span className="text-xs text-white/50 uppercase tracking-wide font-medium">{label}</span>
+    <motion.div
+      whileHover={{ y: -2 }}
+      className="glass rounded-2xl p-4 sm:p-5 space-y-2 min-w-0 border border-white/10 hover:border-white/20 transition-all"
+    >
+      <div className="flex items-center gap-2">
+        <Icon size={16} className="text-white/50 flex-shrink-0" />
+        <span className="text-xs text-white/50 uppercase tracking-wider font-medium">{label}</span>
       </div>
-      <p className={`text-2xl font-bold ${accent ?? 'text-white'} break-words`}>{value}</p>
-      {sub && <p className="text-xs text-white/50 break-words">{sub}</p>}
-    </div>
+      <p className={`text-2xl sm:text-3xl font-bold ${accent ?? 'text-white'} break-words leading-tight`}>{value}</p>
+      {sub && <p className="text-xs sm:text-sm text-white/50 break-words">{sub}</p>}
+    </motion.div>
   );
 }
 
@@ -49,18 +53,20 @@ export default function WeatherDetails({ current, daily, aqi }) {
   const visibility = current?.visibility ?? null;
 
   return (
-    <div className="glass rounded-3xl p-5 lg:p-6 border border-white/10 min-w-0">
-      <div className="flex items-end justify-between gap-3 mb-4">
-        <div>
-          <p className="text-xs text-white/50 uppercase tracking-[0.24em] font-medium">
-            Environment Data
-          </p>
-          <p className="text-white/80 text-sm mt-1">Compact live readings</p>
-        </div>
-        <p className="text-xs text-white/45 uppercase tracking-[0.22em]">Air, light, comfort</p>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45 }}
+      className="glass rounded-3xl p-5 sm:p-6 lg:p-7 border border-white/10 min-w-0"
+    >
+      <div className="mb-5 sm:mb-6">
+        <p className="text-xs text-white/50 uppercase tracking-[0.24em] font-medium">
+          Environment Data
+        </p>
+        <h3 className="text-white text-h3 font-semibold mt-1">Air, light, and comfort</h3>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <Tile
           icon={Droplets}
           label="Humidity"
@@ -131,6 +137,6 @@ export default function WeatherDetails({ current, daily, aqi }) {
           sub="Local time"
         />
       </div>
-    </div>
+    </motion.div>
   );
 }

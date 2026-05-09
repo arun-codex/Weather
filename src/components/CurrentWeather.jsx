@@ -59,70 +59,84 @@ export default function CurrentWeather({ current, daily, cityName, isDay }) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="glass rounded-[2rem] px-6 py-8 lg:px-10 lg:py-12 text-center text-white space-y-3 relative overflow-hidden border border-white/10"
-      style={cardStyle}
+      className="relative rounded-[2.5rem] overflow-hidden"
     >
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-white/0 via-white/45 to-white/0 opacity-70" />
+      {/* Premium background with subtle gradient */}
+      <div className="absolute inset-0 glass border border-white/10" />
+      
+      {/* Dynamic gradient overlay based on weather */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+      
+      {/* Animated glow effect */}
       <motion.div
         animate={animVariant}
-        className="absolute -top-8 right-[-24px] w-32 h-32 rounded-full bg-white/8 blur-2xl"
+        className="absolute -top-12 right-0 w-48 h-48 rounded-full bg-white/8 blur-3xl opacity-40"
       />
 
-      {/* City name */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="text-sm lg:text-base font-medium tracking-wide text-white/80"
-      >
-        {cityName}
-      </motion.p>
+      {/* Content */}
+      <div className="relative z-10 px-6 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-14 text-center text-white space-y-4 sm:space-y-6">
+        {/* Location header */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="space-y-1"
+        >
+          <p className="text-sm sm:text-base font-medium tracking-wide text-white/70">
+            {cityName}
+          </p>
+          <p className="text-[11px] sm:text-xs text-white/50 tracking-[0.28em] uppercase">
+            {periodLabel} · {formatCurrentTime()}
+          </p>
+        </motion.div>
 
-      {/* Time */}
-      <p className="text-[11px] lg:text-xs text-white/55 tracking-[0.28em] uppercase">
-        {periodLabel} · {formatCurrentTime()}
-      </p>
+        {/* Animated weather icon */}
+        <motion.div
+          animate={animVariant}
+          className="flex justify-center py-3 sm:py-5"
+        >
+          <IconComp
+            size={120}
+            strokeWidth={1}
+            className="text-white drop-shadow-lg"
+          />
+        </motion.div>
 
-      {/* Animated weather icon */}
-      <motion.div
-        animate={animVariant}
-        className="flex justify-center my-3 lg:my-5"
-      >
-        <IconComp
-          size={92}
-          strokeWidth={1.2}
-          className="text-white drop-shadow-lg"
-        />
-      </motion.div>
+        {/* Big temperature — HERO */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="space-y-2"
+        >
+          <p className="text-hero font-bold tracking-tighter leading-none">
+            {temp}°
+          </p>
+          <p className="text-h3 sm:text-h2 font-semibold text-white/90">
+            {info.condition}
+          </p>
+        </motion.div>
 
-      {/* Big temperature */}
-      <motion.p
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1,   opacity: 1 }}
-        transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-        className="text-[5.5rem] sm:text-8xl lg:text-[7.5rem] font-black tracking-tighter leading-none"
-      >
-        {temp}°
-      </motion.p>
-
-      {/* Condition label */}
-      <p className="text-base lg:text-lg font-light text-white/90 mt-1">
-        {info.label}
-      </p>
-
-      <div className="flex items-center justify-center gap-2 pt-2 text-[10px] lg:text-xs text-white/55 uppercase tracking-[0.24em]">
-        <span className="h-px w-6 bg-white/20" />
-        <span>Feels like {feelsLike}°</span>
-        <span className="h-px w-6 bg-white/20" />
-      </div>
-
-      {/* High / Low / Feels Like */}
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-3 text-sm text-white/60">
-        <span>H: <span className="text-white font-medium">{highTemp}°</span></span>
-        <span className="w-px h-4 bg-white/20" />
-        <span>L: <span className="text-white font-medium">{lowTemp}°</span></span>
-        <span className="w-px h-4 bg-white/20" />
-        <span>Feels <span className="text-white font-medium">{feelsLike}°</span></span>
+        {/* Detailed info */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="grid grid-cols-3 gap-4 pt-4 border-t border-white/10"
+        >
+          <div className="text-center">
+            <p className="text-xs text-white/50 uppercase tracking-wider font-medium mb-1">Feels Like</p>
+            <p className="text-h4 font-semibold text-white/90">{feelsLike}°</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-white/50 uppercase tracking-wider font-medium mb-1">High</p>
+            <p className="text-h4 font-semibold text-white/90">{highTemp}°</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-white/50 uppercase tracking-wider font-medium mb-1">Low</p>
+            <p className="text-h4 font-semibold text-white/90">{lowTemp}°</p>
+          </div>
+        </motion.div>
       </div>
     </motion.div>
   );

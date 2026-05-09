@@ -142,117 +142,132 @@ export default function App() {
 
       {/* Main scrollable content */}
       <main className="relative z-10 min-h-screen">
-        <div className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-5 lg:pt-10 pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 lg:gap-8 items-start">
-            
-            {/* ── LEFT COLUMN ── */}
-            <div className="flex flex-col gap-6 lg:sticky lg:top-6 z-50">
-              <SearchBar
-                onSelectCity={handleCitySelect}
-                onGpsClick={handleGpsClick}
-                currentCity={displayCity}
-              />
-              <SavedCities 
-                currentCity={displayCity} 
-                currentCoords={activeCoords}
-                onCitySelect={handleCitySelect} 
-              />
-            </div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-20">
+          
+          {/* ── SEARCH & CITY NAVIGATION (STICKY TOP) ── */}
+          <div className="sticky top-4 sm:top-6 z-50 mb-6">
+            <SearchBar
+              onSelectCity={handleCitySelect}
+              onGpsClick={handleGpsClick}
+              currentCity={displayCity}
+            />
+          </div>
 
-            {/* ── CONTENT AREA ── */}
-            {isLoading ? (
-              <div className="min-w-0">
-                <LoadingSkeleton />
-              </div>
-            ) : error ? (
-              <div className="min-w-0">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="glass rounded-3xl p-8 text-center text-white mt-4"
-                >
-                  <p className="text-4xl mb-4">⚠️</p>
-                  <p className="font-semibold text-lg">Couldn't load weather</p>
-                  <p className="text-white/60 text-sm mt-2 mb-6">{error}</p>
-                  <button
-                    onClick={refresh}
-                    className="px-6 py-2 rounded-full glass text-sm font-medium hover:bg-white/15 transition-colors"
-                  >
-                    Try again
-                  </button>
-                </motion.div>
-              </div>
-            ) : data ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="min-w-0 flex flex-col gap-6"
+          {/* ── MAIN CONTENT AREA ── */}
+          {isLoading ? (
+            <LoadingSkeleton />
+          ) : error ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="glass rounded-3xl p-8 text-center text-white mt-4"
+            >
+              <p className="text-4xl mb-4">⚠️</p>
+              <p className="font-semibold text-lg">Couldn't load weather</p>
+              <p className="text-white/60 text-sm mt-2 mb-6">{error}</p>
+              <button
+                onClick={refresh}
+                className="px-6 py-2 rounded-full glass text-sm font-medium hover:bg-white/15 transition-colors"
               >
-                <WeatherAlerts current={data.weather.current} aqi={data.aqi} />
+                Try again
+              </button>
+            </motion.div>
+          ) : data ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col gap-6"
+            >
+              {/* Weather Alerts */}
+              <WeatherAlerts current={data.weather.current} aqi={data.aqi} />
 
-                {/* ── HERO WEATHER ── */}
+              {/* ── HERO WEATHER (FULL WIDTH, DOMINANT) ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
                 <CurrentWeather
                   current={data.weather.current}
                   daily={data.weather.daily}
                   cityName={displayCity}
                   isDay={isDay}
                 />
-
-                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)] gap-6 items-start">
-                  {/* ── PRIMARY STACK ── */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.45, delay: 0.05 }}
-                    className="flex flex-col gap-6 min-w-0"
-                  >
-                    <InsightsPanel />
-
-                    <div className="glass rounded-3xl border border-white/10 p-5 lg:p-6 space-y-5 min-w-0">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-white/45 text-xs uppercase tracking-[0.24em]">Forecast</p>
-                          <h3 className="text-white text-lg font-semibold mt-1">Hourly and 7-day outlook</h3>
-                        </div>
-                        <p className="text-white/45 text-xs">Clean, scrollable, and compact</p>
-                      </div>
-                      <HourlyForecast hourly={data.weather.hourly} />
-                      <DailyForecast daily={data.weather.daily} />
-                    </div>
-                  </motion.div>
-
-                  {/* ── RIGHT RAIL ── */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.45, delay: 0.1 }}
-                    className="flex flex-col gap-6 min-w-0 pb-10"
-                  >
-                    <WeatherDetails current={data.weather.current} daily={data.weather.daily} aqi={data.aqi} />
-                    <LifestyleInsights
-                      current={data.weather.current}
-                      hourly={data.weather.hourly}
-                      daily={data.weather.daily}
-                      aqi={data.aqi}
-                      cityName={displayCity}
-                    />
-
-                    {/* Footer: last refresh timestamp */}
-                    <div className="flex items-center justify-center gap-2 py-4 text-white/35 text-xs">
-                      <RefreshCw size={11} />
-                      <span>
-                        {lastRefresh
-                          ? `Updated ${lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                          : 'Refreshing…'}
-                      </span>
-                    </div>
-                  </motion.div>
-                </div>
               </motion.div>
-            ) : null}
 
-          </div>
+              {/* ── SMART SUGGESTIONS (INSIGHTS) ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.15 }}
+              >
+                <InsightsPanel />
+              </motion.div>
+
+              {/* ── SAVED CITIES (HORIZONTAL SCROLL) ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.2 }}
+              >
+                <SavedCities 
+                  currentCity={displayCity} 
+                  currentCoords={activeCoords}
+                  onCitySelect={handleCitySelect} 
+                />
+              </motion.div>
+
+              {/* ── FORECAST SECTION ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.25 }}
+                className="glass rounded-3xl border border-white/10 p-5 lg:p-6 space-y-5"
+              >
+                <div>
+                  <p className="text-xs text-white/50 uppercase tracking-[0.24em] font-medium">Forecast</p>
+                  <h2 className="text-white text-h3 font-semibold mt-2">Hourly and 7-day outlook</h2>
+                </div>
+                <HourlyForecast hourly={data.weather.hourly} />
+                <DailyForecast daily={data.weather.daily} />
+              </motion.div>
+
+              {/* ── ENVIRONMENT METRICS ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.3 }}
+              >
+                <WeatherDetails current={data.weather.current} daily={data.weather.daily} aqi={data.aqi} />
+              </motion.div>
+
+              {/* ── LIFESTYLE INSIGHTS ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.35 }}
+              >
+                <LifestyleInsights
+                  current={data.weather.current}
+                  hourly={data.weather.hourly}
+                  daily={data.weather.daily}
+                  aqi={data.aqi}
+                  cityName={displayCity}
+                />
+              </motion.div>
+
+              {/* Footer: last refresh timestamp */}
+              <div className="flex items-center justify-center gap-2 py-4 text-white/35 text-xs">
+                <RefreshCw size={11} />
+                <span>
+                  {lastRefresh
+                    ? `Updated ${lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Refreshing…'}
+                </span>
+              </div>
+            </motion.div>
+          ) : null}
         </div>
       </main>
     </>
